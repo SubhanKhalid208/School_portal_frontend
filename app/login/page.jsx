@@ -14,8 +14,10 @@ export default function LoginPage() {
     setIsClient(true);
   }, []);
 
+  // ✅ FIXED: Using Environment Variable instead of hardcoded localhost
   const handleGoogleLogin = () => {
-    window.location.href = "http://localhost:5000/api/auth/google";
+    const backendURL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+    window.location.href = `${backendURL}/api/auth/google`;
   };
 
   const onSubmit = async (e) => {
@@ -73,7 +75,7 @@ export default function LoginPage() {
       }
     } catch (err) {
       console.error("Critical Login Error:", err);
-      toast.error("Kuch masla hua hai! Console check karein.");
+      toast.error("Server se rabta nahi ho saka! Console check karein.");
       setLoading(false);
     }
   };
