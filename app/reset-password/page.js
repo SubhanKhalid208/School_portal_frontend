@@ -1,10 +1,10 @@
 "use client"; 
-
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import axios from 'axios';
 
-export default function ResetPasswordPage() {
+// 1. Pehle aik chota component banaya jo logic handle karega
+function ResetPasswordContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     
@@ -18,8 +18,10 @@ export default function ResetPasswordPage() {
         e.preventDefault();
         setLoading(true);
         try {
-        
-            const res = await axios.post('http://localhost:5000/api/auth/reset-password', {
+            // Live backend URL use kiya jo Railway par hai
+            const backendURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            
+            const res = await axios.post(`${backendURL}/api/auth/reset-password`, {
                 token,
                 password
             });
@@ -63,5 +65,14 @@ export default function ResetPasswordPage() {
             </form>
             {message && <p style={{ marginTop: '20px', fontWeight: 'bold' }}>{message}</p>}
         </div>
+    );
+}
+
+// 2. Main Page component jo Suspense use karta hai
+export default function ResetPasswordPage() {
+    return (
+        <Suspense fallback={<div style={{ textAlign: 'center', marginTop: '100px' }}>Loading...</div>}>
+            <ResetPasswordContent />
+        </Suspense>
     );
 }
