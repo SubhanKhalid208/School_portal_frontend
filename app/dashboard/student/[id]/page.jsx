@@ -2,6 +2,7 @@
 import { useEffect, useState, use } from 'react'; 
 import { toast } from 'react-hot-toast';
 import { BookOpen, GraduationCap, TrendingUp, CheckCircle, Calendar, Info, MapPin } from 'lucide-react';
+import { safeApiCall } from '@/app/utils/api'; // ✅ Centralized API helper use kiya
 
 export default function StudentDashboardPage({ params }) {
   const resolvedParams = use(params);
@@ -29,30 +30,33 @@ export default function StudentDashboardPage({ params }) {
           return;
         }
 
-        const headers = {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+        const options = {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
         };
 
-        // Optimized: Dono requests aik sath jayengi
+        // ✅ Optimized: Dono calls safeApiCall ke zariye
         const [statsRes, coursesRes] = await Promise.all([
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/student/attendance/student/${studentId}`, { headers, cache: 'no-store' }),
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/student/my-courses/${studentId}`, { headers, cache: 'no-store' })
+          safeApiCall(`/student/attendance/student/${studentId}`, options),
+          safeApiCall(`/student/my-courses/${studentId}`, options)
         ]);
 
-        if (statsRes.status === 401 || coursesRes.status === 401) {
-          toast.error("Access Denied! Token invalid.");
-          return;
+        // Attendance Data Handle karein
+        if (statsRes.success) {
+          setData(statsRes.data);
+        } else {
+          console.error("Stats Error:", statsRes.error);
         }
 
-        const statsResult = await statsRes.json();
-        const coursesResult = await coursesRes.json();
-
-        if (statsResult.success) setData(statsResult);
-        if (coursesResult.success) setCourses(coursesResult.courses || []);
+        // Courses Data Handle karein
+        if (coursesRes.success) {
+          // Backend se agar 'courses' array aa raha hai to wo set karein
+          setCourses(coursesRes.data.courses || coursesRes.data || []);
+        }
 
       } catch (err) {
-        toast.error("Lahore Portal: Connection error!");
+        toast.error("Lahore Portal: Syncing error!");
       } finally {
         setLoading(false);
       }
@@ -94,21 +98,21 @@ export default function StudentDashboardPage({ params }) {
         <StatWidget 
           icon={<TrendingUp size={40}/>} 
           label="Overall Attendance" 
-          value={`${data.attendancePercentage}%`} 
+          value={`${data.attendancePercentage || 0}%`} 
           color="green" 
-          progress={data.attendancePercentage}
+          progress={data.attendancePercentage || 0}
         />
         <StatWidget 
           icon={<CheckCircle size={40}/>} 
           label="Present Days" 
-          value={data.totalPresent} 
+          value={data.totalPresent || 0} 
           color="blue" 
           subText="Days attended"
         />
         <StatWidget 
           icon={<Calendar size={40}/>} 
           label="Total Academic Days" 
-          value={data.totalDays} 
+          value={data.totalDays || 0} 
           color="purple" 
           subText="Working sessions"
         />
@@ -150,7 +154,6 @@ export default function StudentDashboardPage({ params }) {
   );
 }
 
-// --- Internal Helper Component ---
 function StatWidget({icon, label, value, color, progress, subText}) {
   const colors = {
     green: "text-green-500 bg-green-500/10",
@@ -158,13 +161,15 @@ function StatWidget({icon, label, value, color, progress, subText}) {
     purple: "text-purple-500 bg-purple-500/10"
   };
 
+  const textColor = colors[color].split(' ')[0];
+
   return (
     <div className="bg-[#161d2f] p-8 rounded-[32px] border border-gray-800 shadow-2xl relative overflow-hidden group hover:border-gray-700 transition-all">
-      <div className={`absolute right-4 top-4 opacity-20 group-hover:scale-110 transition-transform duration-500 ${colors[color].split(' ')[0]}`}>
+      <div className={`absolute right-4 top-4 opacity-20 group-hover:scale-110 transition-transform duration-500 ${textColor}`}>
         {icon}
       </div>
       <p className="text-gray-500 text-[10px] font-black uppercase tracking-[0.2em]">{label}</p>
-      <h2 className={`text-6xl font-black mt-2 tracking-tighter ${colors[color].split(' ')[0]}`}>{value}</h2>
+      <h2 className={`text-6xl font-black mt-2 tracking-tighter ${textColor}`}>{value}</h2>
       
       {progress !== undefined ? (
         <div className="w-full bg-gray-800 h-2 mt-6 rounded-full overflow-hidden">
