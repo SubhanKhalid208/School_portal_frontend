@@ -79,6 +79,67 @@ export async function handleLogin(formData) {
   }
 }
 
+export async function handleSignup(formData) {
+  const name = formData.get('name');
+  const email = formData.get('email');
+  const dob = formData.get('dob');
+  const API_URL = getBaseUrl();
+
+  try {
+    // Input validation
+    if (!name || !email) {
+      return { success: false, error: "Name aur Email zaroori hain!" };
+    }
+
+    console.log(`📝 Registration attempt for: ${email}`);
+    console.log(`📡 Sending to: ${API_URL}/auth/signup`);
+
+    const res = await fetch(`${API_URL}/auth/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        name: name.trim(), 
+        email: email.toLowerCase().trim(), 
+        dob: dob || null, 
+        role: 'student' 
+      }),
+      cache: 'no-store'
+    });
+
+    const contentType = res.headers.get("content-type");
+    let data;
+    
+    if (contentType && contentType.includes("application/json")) {
+      data = await res.json();
+    } else {
+      console.error("❌ Non-JSON response received");
+      throw new Error("Backend ne JSON response nahi diya!");
+    }
+
+    if (!res.ok) {
+      console.error("❌ Registration failed:", data);
+      return { 
+        success: false, 
+        error: data.error || "Registration fail ho gaya! Phir se try karein." 
+      };
+    }
+
+    console.log("✅ Registration successful:", data);
+    return { 
+      success: true, 
+      message: data.message || "Registration successful! Email check karein password set karne ke liye.",
+      userId: data.userId
+    };
+
+  } catch (error) {
+    console.error("❌ Signup Action Error:", error.message);
+    return { 
+      success: false, 
+      error: "Server se rabta nahi ho saka! " + (error.message || "Network error") 
+    };
+  }
+}
+
 export async function handleLogout() {
   const cookieStore = await cookies();
   cookieStore.delete('userId');

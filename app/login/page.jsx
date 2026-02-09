@@ -3,6 +3,7 @@ import { handleLogin } from '../actions/auth';
 import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import Cookies from 'js-cookie'; 
 
 export default function LoginPage() {
@@ -133,6 +134,15 @@ export default function LoginPage() {
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="G" />
             Continue with Google
           </button>
+        </div>
+
+        <div className="mt-6 text-center">
+          <p className="text-gray-400">
+            ابھی account nahi hai?{' '}
+            <Link href="/register" className="text-green-500 hover:text-green-400 font-bold">
+              Register karein
+            </Link>
+          </p>
         </div>
       </div>
     </div>
