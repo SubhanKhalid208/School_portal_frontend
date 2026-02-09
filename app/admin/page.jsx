@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Users, BookOpen, GraduationCap, Trash2, Edit, Search, X, Upload, CheckCircle, FileUp } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import Cookies from 'js-cookie';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({ students: 0, teachers: 0, courses: 0 });
@@ -23,13 +24,10 @@ export default function AdminDashboard() {
 
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
-  // --- HELPER: GET AUTH TOKEN FROM COOKIES ---
+  // --- HELPER: GET AUTH TOKEN ---
   const getAuthToken = useCallback(() => {
-    if (typeof document === 'undefined') return null;
-    const cookie = document.cookie
-      .split('; ')
-      .find(row => row.startsWith('token='));
-    return cookie ? cookie.split('=')[1] : null;
+    // Priority: Cookies (best for SSR/Auth) then LocalStorage
+    return Cookies.get('token') || localStorage.getItem('token');
   }, []);
 
   // --- 1. FETCH STATS ---
@@ -39,12 +37,16 @@ export default function AdminDashboard() {
       const res = await fetch(`${API_BASE}/admin/stats`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      const data = await res.json();
-      setStats({
-        students: data.students || 0,
-        teachers: data.teachers || 0,
-        courses: data.subjects || 0
-      });
+      const result = await res.json();
+      
+      // Backend ab { success: true, data: {...} } bhej raha hai
+      if (result.success) {
+        setStats({
+          students: result.data.students || 0,
+          teachers: result.data.teachers || 0,
+          courses: result.data.subjects || 0
+        });
+      }
     } catch (err) { 
         console.error("Stats fetch failed"); 
     }
@@ -58,8 +60,10 @@ export default function AdminDashboard() {
       const res = await fetch(`${API_BASE}/admin/users?search=${query}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      const data = await res.json();
-      setUsers(Array.isArray(data) ? data : []);
+      const result = await res.json();
+      
+      // Data extract from result.data
+      setUsers(result.success && Array.isArray(result.data) ? result.data : []);
     } catch (err) {
       toast.error("Lahore Portal sync error!");
     } finally {
@@ -118,6 +122,7 @@ export default function AdminDashboard() {
   // --- 4. IMAGE UPLOAD (CLOUDINARY) ---
   const handleImageUpload = async (file) => {
     if (!file) return;
+    const token = getAuthToken(); // Token lazmi hai kyunke backend protected hai
     const data = new FormData();
     data.append("file", file); 
 
@@ -125,11 +130,12 @@ export default function AdminDashboard() {
       setUploading(true);
       const res = await fetch(`${API_BASE}/admin/upload-image`, {
         method: "POST",
-        body: data
+        body: data,
+        headers: { 'Authorization': `Bearer ${token}` } 
       });
       const result = await res.json();
 
-      if (result.url) {
+      if (result.success && result.url) {
         setFormData(prev => ({ ...prev, profile_pic: result.url }));
         toast.success("Profile picture set!");
       }
@@ -156,15 +162,16 @@ export default function AdminDashboard() {
         },
         body: JSON.stringify(formData)
       });
+      
+      const result = await res.json();
 
-      if (res.ok) {
+      if (result.success) {
         toast.success(editingUserId ? "User updated!" : "User created!");
         closeModal();
         fetchUsers(searchTerm);
         fetchStats();
       } else {
-        const errData = await res.json();
-        toast.error(errData.error || "Ghalti!");
+        toast.error(result.error || "Ghalti!");
       }
     } catch (err) { toast.error("Server connection lost"); }
   };
@@ -178,7 +185,8 @@ export default function AdminDashboard() {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (res.ok) {
+      const result = await res.json();
+      if (result.success) {
         toast.success("User removed.");
         fetchUsers(searchTerm); 
         fetchStats();
@@ -194,7 +202,7 @@ export default function AdminDashboard() {
         name: user.name || '', 
         email: user.email || '', 
         role: user.role || 'student', 
-        password: '', // Password update optional rakhein
+        password: '', 
         profile_pic: user.profile_pic || ''
       });
     }
@@ -313,7 +321,6 @@ export default function AdminDashboard() {
             <h2 className="text-2xl font-black mb-6 italic text-green-500 uppercase">{editingUserId ? "Update Profile" : "New Portal Account"}</h2>
             
             <form onSubmit={handleSaveUser} className="space-y-4">
-              {/* Image Upload Area */}
               <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-800 rounded-xl p-4 bg-gray-900/30">
                 <div className="relative w-20 h-20 rounded-full bg-gray-800 overflow-hidden mb-2 border-2 border-green-500/30">
                     {formData.profile_pic ? <img src={formData.profile_pic} className="w-full h-full object-cover" /> : <Upload className="m-auto mt-5 text-gray-700" />}
