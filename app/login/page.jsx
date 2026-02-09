@@ -28,6 +28,8 @@ export default function LoginPage() {
     
     try {
       const result = await handleLogin(formData);
+      
+      // Console par check karein ke role 'admin' hi aa raha hai
       console.log("🔐 Login Result:", result);
 
       if (result?.error) {
@@ -36,17 +38,15 @@ export default function LoginPage() {
       } else if (result) {
         toast.success("✅ Login Successful! Redirecting...");
 
-        // 1. Data extraction with Safety Checks
+        // 1. Data extraction & Normalization
         const tokenToSave = result.token;
-        // Case-insensitive role handling taake 'Admin' aur 'admin' dono chalein
         const userRole = result.role ? result.role.toLowerCase().trim() : 'student';
         const userId = result.userId;
 
-        // 2. Persistent Saving (Cookies + LocalStorage)
+        // 2. Persistent Saving
         if (tokenToSave) {
           Cookies.set('token', tokenToSave, { expires: 1, path: '/' });
           localStorage.setItem('token', tokenToSave);
-          console.log("✅ Token secured.");
         }
         
         Cookies.set('role', userRole, { expires: 1, path: '/' });
@@ -54,19 +54,19 @@ export default function LoginPage() {
           Cookies.set('userId', userId, { expires: 1, path: '/' });
         }
 
-        // 3. Final Redirect Logic (Fixed for Admin)
+        // 3. Optimized Redirect Logic (Matching your Folder Structure)
         setTimeout(() => {
           if (userRole === 'admin') {
-            router.push('/admin');
+            // Screenshot ke mutabiq ye sahi path hai
+            router.push('/dashboard/admin'); 
           } else if (userRole === 'teacher') {
             router.push('/teacher');
           } else if (userRole === 'student') {
-            // Student ke liye specific route ya generic dashboard
             router.push(userId ? `/dashboard/student/${userId}` : '/dashboard/student');
           } else {
             router.push('/dashboard');
           }
-        }, 500); // Thora delay taake cookies state update ho jaye
+        }, 600); // 600ms delay taake browser cookies ko process kar le
       }
     } catch (err) {
       console.error("❌ Critical Login Error:", err);
@@ -84,23 +84,23 @@ export default function LoginPage() {
         
         <form onSubmit={onSubmit} className="space-y-5">
           <div>
-            <label className="block text-gray-400 mb-2">Email Address</label>
+            <label className="block text-gray-400 mb-2 font-semibold">Email Address</label>
             <input 
               name="email" 
               type="email" 
               required 
-              className="w-full p-3 rounded-lg bg-[#1f2937] text-white border border-gray-600 focus:border-green-500 outline-none"
+              className="w-full p-3 rounded-lg bg-[#1f2937] text-white border border-gray-600 focus:border-green-500 outline-none transition-all"
               placeholder="subhan@example.com"
             />
           </div>
           
           <div>
-            <label className="block text-gray-400 mb-2">Password</label>
+            <label className="block text-gray-400 mb-2 font-semibold">Password</label>
             <input 
               name="password" 
               type="password" 
               required 
-              className="w-full p-3 rounded-lg bg-[#1f2937] text-white border border-gray-600 focus:border-green-500 outline-none"
+              className="w-full p-3 rounded-lg bg-[#1f2937] text-white border border-gray-600 focus:border-green-500 outline-none transition-all"
               placeholder="••••••••"
             />
           </div>
@@ -108,7 +108,7 @@ export default function LoginPage() {
           <button 
             disabled={loading}
             type="submit"
-            className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg transition-all"
+            className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg transition-all shadow-lg active:scale-95"
           >
             {loading ? 'Logging in...' : 'Login Now'}
           </button>
@@ -133,7 +133,7 @@ export default function LoginPage() {
         <div className="mt-6 text-center">
           <p className="text-gray-400">
             Account nahi hai?{' '}
-            <Link href="/register" className="text-green-500 hover:text-green-400 font-bold">
+            <Link href="/register" className="text-green-500 hover:text-green-400 font-bold underline">
               Register karein
             </Link>
           </p>
