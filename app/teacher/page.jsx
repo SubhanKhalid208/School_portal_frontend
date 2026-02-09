@@ -13,46 +13,59 @@ export default function TeacherDashboard() {
   const [editingCourse, setEditingCourse] = useState(null);
   const [formData, setFormData] = useState({ title: '', description: '' });
 
-  const teacherId = Cookies.get('userId');
+  // Token ko localStorage se uthaein (Security fix)
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const backupName = Cookies.get('userName') || 'Teacher';
 
   const fetchDashboardData = async () => {
+    if (!token) {
+      toast.error("Aap login nahi hain. Dubara login karein.");
+      setLoading(false);
+      return;
+    }
+
     try {
-      // ✅ No need to set loading true every time, only on initial load
-      const courseUrl = getApiUrl(`/teacher/my-courses?teacherId=${teacherId}`);
-      const statsUrl = getApiUrl(`/teacher/stats?teacherId=${teacherId}`);
+      // ✅ URLs simplified (Backend ab token se ID nikal leta hai)
+      const courseUrl = getApiUrl(`/teacher/my-courses`);
+      const statsUrl = getApiUrl(`/teacher/stats`);
       
+      const headers = { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+
       const [courseRes, statsRes] = await Promise.all([
-        fetchWithRetry(courseUrl, { method: 'GET' }, 1),
-        fetchWithRetry(statsUrl, { method: 'GET' }, 1)
+        fetchWithRetry(courseUrl, { method: 'GET', headers }, 1),
+        fetchWithRetry(statsUrl, { method: 'GET', headers }, 1)
       ]);
 
-      const courses = await courseRes.json();
+      if (courseRes.status === 401 || statsRes.status === 401) {
+        toast.error("Session expire ho gaya hai.");
+        return;
+      }
+
+      const coursesData = await courseRes.json();
       const statistics = await statsRes.json();
       
-      setMyCourses(Array.isArray(courses) ? courses : []);
+      // Backend response structure ke mutabiq data set karein
+      setMyCourses(Array.isArray(coursesData.data) ? coursesData.data : []);
       
       setStats({
         totalStudents: statistics.totalStudents || 0,
         totalSubjects: statistics.totalSubjects || 0,
-        teacherName: statistics.teacherName || '' 
+        teacherName: statistics.teacherName || backupName 
       }); 
     } catch (err) {
       console.error("❌ Dashboard fetch error:", err);
       toast.error("Dashboard data load nahi ho saka.");
     } finally {
-      // ✅ CRITICAL FIX: Ensure loading is set to false regardless of success or failure
       setLoading(false);
     }
   };
 
   useEffect(() => { 
-    if(teacherId) {
-      fetchDashboardData(); 
-    } else {
-      setLoading(false); // ID nahi mili toh loading khatam karein
-    }
-  }, [teacherId]);
+    fetchDashboardData(); 
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -65,8 +78,11 @@ export default function TeacherDashboard() {
       const url = getApiUrl(endpoint);
       const res = await fetchWithRetry(url, {
         method: method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData, teacher_id: teacherId })
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` // ✅ Added Token
+        },
+        body: JSON.stringify(formData) // teacher_id ab body mein bhejne ki zaroorat nahi
       }, 1);
 
       if (res.ok) {
@@ -74,13 +90,12 @@ export default function TeacherDashboard() {
         setShowModal(false);
         setEditingCourse(null);
         setFormData({ title: '', description: '' });
-        fetchDashboardData(); // Refresh data
+        fetchDashboardData(); 
       } else {
         const error = await res.json();
         toast.error(error.error || "Process fail ho gaya.");
       }
     } catch (err) {
-      console.error("❌ Submit error:", err);
       toast.error("Server connection error.");
     }
   };
@@ -90,7 +105,8 @@ export default function TeacherDashboard() {
     try {
       const url = getApiUrl(`/teacher/courses/${id}`);
       const res = await fetchWithRetry(url, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` } // ✅ Added Token
       }, 1);
       
       if (res.ok) {
@@ -100,16 +116,15 @@ export default function TeacherDashboard() {
         toast.error("❌ Delete fail.");
       }
     } catch (err) {
-      console.error("❌ Delete error:", err);
       toast.error("Delete command fail ho gayi.");
     }
   };
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen bg-[#0f172a]">
-       <div className="p-10 text-blue-500 text-2xl font-bold animate-pulse">
-         Lahore Portal Dashboard Load Ho Raha Hai...
-       </div>
+        <div className="p-10 text-blue-500 text-2xl font-bold animate-pulse">
+           Lahore Portal Dashboard Load Ho Raha Hai...
+        </div>
     </div>
   );
 
@@ -120,7 +135,7 @@ export default function TeacherDashboard() {
         <div className="bg-[#161d2f] p-6 rounded-2xl border border-gray-800 shadow-xl transition-transform hover:scale-105">
           <p className="text-gray-400 text-sm">Teacher Name</p>
           <h3 className="font-bold text-lg text-blue-400">
-            {stats.teacherName || backupName}
+            {stats.teacherName}
           </h3>
         </div>
         <div className="bg-[#161d2f] p-6 rounded-2xl border border-gray-800 shadow-xl transition-transform hover:scale-105">
@@ -177,7 +192,7 @@ export default function TeacherDashboard() {
         </div>
       </div>
 
-      {/* MODAL POPUP (Same as before but with slightly better padding) */}
+      {/* MODAL */}
       {showModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
           <div className="bg-[#161d2f] border border-gray-800 p-8 rounded-2xl w-full max-w-md shadow-2xl">
