@@ -22,15 +22,19 @@ export async function handleLogin(formData) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
-      cache: 'no-store'
+      cache: 'no-store',
+      credentials: 'include'
     });
 
+    // Helpful debugging: include status and response text when JSON missing
     const contentType = res.headers.get("content-type");
     let data;
     if (contentType && contentType.includes("application/json")) {
       data = await res.json();
     } else {
-      throw new Error("Backend ne JSON response nahi diya!");
+      const text = await res.text().catch(() => "<no-body>");
+      console.error(`❌ Expected JSON but got status=${res.status} body=${text}`);
+      throw new Error(`Backend ne JSON response nahi diya! status=${res.status} body=${text}`);
     }
 
     if (!res.ok) {
@@ -102,17 +106,18 @@ export async function handleSignup(formData) {
         dob: dob || null, 
         role: 'student' 
       }),
-      cache: 'no-store'
+      cache: 'no-store',
+      credentials: 'include'
     });
 
     const contentType = res.headers.get("content-type");
     let data;
-    
     if (contentType && contentType.includes("application/json")) {
       data = await res.json();
     } else {
-      console.error("❌ Non-JSON response received");
-      throw new Error("Backend ne JSON response nahi diya!");
+      const text = await res.text().catch(() => "<no-body>");
+      console.error(`❌ Non-JSON response received status=${res.status} body=${text}`);
+      throw new Error(`Backend ne JSON response nahi diya! status=${res.status} body=${text}`);
     }
 
     if (!res.ok) {

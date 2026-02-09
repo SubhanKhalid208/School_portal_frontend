@@ -25,7 +25,6 @@ export const getApiUrl = (endpoint) => {
   }
 
   // 2. Logic to prevent double "/api/api"
-  // If base already contains "/api", we remove "/api" from the start of the endpoint
   if (base.toLowerCase().endsWith('/api')) {
     const finalEndpoint = cleanEndpoint.replace(/^\/api\//, '/');
     return `${base}${finalEndpoint}`;
@@ -42,14 +41,14 @@ export const fetchWithRetry = async (url, options = {}, retries = 1) => {
   try {
     const response = await fetch(url, {
       ...options,
-      // Production mein session cookies ke liye 'include' lazmi hai
-      credentials: options.credentials || 'include',
+      // ✅ LOGIC CHANGE: Production mein CORS issues se bachne ke liye 
+      // 'same-origin' default rakha hai, login ke liye manual handle behtar hai.
+      credentials: options.credentials || 'same-origin',
       cache: 'no-store' 
     });
 
     if (response.ok) return response;
 
-    // Retry only for Server Errors (500+)
     if (retries > 0 && response.status >= 500) {
       console.warn(`⚠️ Lahore Portal: Server error ${response.status}, retrying...`);
       await new Promise(res => setTimeout(res, 500));
@@ -78,8 +77,12 @@ export const safeApiCall = async (endpoint, options = {}) => {
     const contentType = response.headers.get('content-type');
     let data = null;
 
+    // ✅ DEBUGGING ADDED: Agar JSON nahi milta to console mein text print hoga
     if (contentType && contentType.includes('application/json')) {
       data = await response.json();
+    } else {
+      const errorText = await response.text();
+      console.error("Backend returned non-JSON response:", errorText);
     }
 
     if (!response.ok) {
