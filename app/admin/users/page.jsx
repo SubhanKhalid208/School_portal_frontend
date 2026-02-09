@@ -1,9 +1,11 @@
 'use client'
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { getApiUrl, fetchWithRetry } from '@/app/utils/api';
+// Hum safeApiCall use karenge taake code chota ho jaye
+import { safeApiCall } from '@/app/utils/api';
 
 export default function AdminUsers() {
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -13,24 +15,23 @@ export default function AdminUsers() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    try {
-      const url = getApiUrl('/auth/register');
-      const res = await fetchWithRetry(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      }, 1);
+    setLoading(true);
 
-      if (res.ok) {
-        toast.success(`✅ ${formData.name} ko kamyabi se add kar diya gaya!`);
-        setFormData({ name: '', email: '', password: '', role: 'student' });
-      } else {
-        const error = await res.json();
-        toast.error(error.error || "User add nahi ho saka.");
-      }
-    } catch (err) {
-      console.error("❌ Submit error:", err);
-      toast.error("Server connection ka masla hai.");
+    // safeApiCall khud hi getApiUrl aur fetchWithRetry ko handle karta hai
+    const result = await safeApiCall('/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData),
+    });
+
+    setLoading(false);
+
+    if (result.success) {
+      toast.success(`✅ ${formData.name} ko Lahore Portal mein add kar diya gaya!`);
+      setFormData({ name: '', email: '', password: '', role: 'student' });
+    } else {
+      // safeApiCall hamesha result.error mein message deta hai
+      toast.error(result.error || "User add nahi ho saka.");
     }
   };
 
@@ -47,7 +48,8 @@ export default function AdminUsers() {
               <input 
                 type="text" 
                 required
-                className="w-full bg-[#0a0f1c] border border-gray-700 rounded-lg p-3 text-white focus:border-green-500 outline-none"
+                disabled={loading}
+                className="w-full bg-[#0a0f1c] border border-gray-700 rounded-lg p-3 text-white focus:border-green-500 outline-none disabled:opacity-50"
                 value={formData.name}
                 onChange={(e) => setFormData({...formData, name: e.target.value})}
               />
@@ -57,7 +59,8 @@ export default function AdminUsers() {
               <input 
                 type="email" 
                 required
-                className="w-full bg-[#0a0f1c] border border-gray-700 rounded-lg p-3 text-white focus:border-green-500 outline-none"
+                disabled={loading}
+                className="w-full bg-[#0a0f1c] border border-gray-700 rounded-lg p-3 text-white focus:border-green-500 outline-none disabled:opacity-50"
                 value={formData.email}
                 onChange={(e) => setFormData({...formData, email: e.target.value})}
               />
@@ -70,7 +73,8 @@ export default function AdminUsers() {
               <input 
                 type="password" 
                 required
-                className="w-full bg-[#0a0f1c] border border-gray-700 rounded-lg p-3 text-white focus:border-green-500 outline-none"
+                disabled={loading}
+                className="w-full bg-[#0a0f1c] border border-gray-700 rounded-lg p-3 text-white focus:border-green-500 outline-none disabled:opacity-50"
                 value={formData.password}
                 onChange={(e) => setFormData({...formData, password: e.target.value})}
               />
@@ -78,7 +82,8 @@ export default function AdminUsers() {
             <div>
               <label className="block text-sm text-gray-400 mb-2">Assign Role</label>
               <select 
-                className="w-full bg-[#0a0f1c] border border-gray-700 rounded-lg p-3 text-white focus:border-green-500 outline-none"
+                disabled={loading}
+                className="w-full bg-[#0a0f1c] border border-gray-700 rounded-lg p-3 text-white focus:border-green-500 outline-none disabled:opacity-50"
                 value={formData.role}
                 onChange={(e) => setFormData({...formData, role: e.target.value})}
               >
@@ -91,9 +96,10 @@ export default function AdminUsers() {
 
           <button 
             type="submit"
-            className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-green-900/20"
+            disabled={loading}
+            className={`w-full ${loading ? 'bg-gray-600' : 'bg-green-600 hover:bg-green-700'} text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-green-900/20`}
           >
-            Create User Account
+            {loading ? 'Creating Account...' : 'Create User Account'}
           </button>
         </form>
       </div>

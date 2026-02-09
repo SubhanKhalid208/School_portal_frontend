@@ -23,44 +23,78 @@ export default function AdminDashboard() {
 
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
-  // --- TOKEN HELPER FUNCTION ---
-  const getAuthToken = () => {
+  // --- HELPER: GET AUTH TOKEN FROM COOKIES ---
+  const getAuthToken = useCallback(() => {
     if (typeof document === 'undefined') return null;
-    return document.cookie
+    const cookie = document.cookie
       .split('; ')
-      .find(row => row.startsWith('token='))
-      ?.split('=')[1];
-  };
+      .find(row => row.startsWith('token='));
+    return cookie ? cookie.split('=')[1] : null;
+  }, []);
 
-  // --- FIXED: BULK UPLOAD HANDLER ---
+  // --- 1. FETCH STATS ---
+  const fetchStats = useCallback(async () => {
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`${API_BASE}/admin/stats`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      setStats({
+        students: data.students || 0,
+        teachers: data.teachers || 0,
+        courses: data.subjects || 0
+      });
+    } catch (err) { 
+        console.error("Stats fetch failed"); 
+    }
+  }, [API_BASE, getAuthToken]);
+
+  // --- 2. FETCH USERS (WITH SEARCH) ---
+  const fetchUsers = useCallback(async (query = "") => {
+    try {
+      setLoading(true);
+      const token = getAuthToken();
+      const res = await fetch(`${API_BASE}/admin/users?search=${query}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      setUsers(Array.isArray(data) ? data : []);
+    } catch (err) {
+      toast.error("Lahore Portal sync error!");
+    } finally {
+      setLoading(false);
+    }
+  }, [API_BASE, getAuthToken]);
+
+  // Initial Load
+  useEffect(() => {
+    fetchStats();
+    fetchUsers();
+  }, [fetchUsers, fetchStats]);
+
+  // --- 3. BULK UPLOAD HANDLER ---
   const handleBulkUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     if (!file.name.endsWith('.csv')) {
-      toast.error("Please select a valid CSV file!");
+      toast.error("Sirf CSV file allow hai!");
       return;
     }
 
     const token = getAuthToken();
-    if (!token) {
-      toast.error("Session expired! Please login again.");
-      return;
-    }
-
     const data = new FormData();
     data.append('file', file);
 
     try {
       setBulkLoading(true);
-      const loadingToast = toast.loading("Uploading bulk records to Lahore Portal...");
+      const loadingToast = toast.loading("Uploading students to Lahore Portal...");
 
       const res = await fetch(`${API_BASE}/student/bulk-upload`, {
         method: 'POST',
         body: data,
-        headers: {
-          'Authorization': `Bearer ${token}` 
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
 
       const result = await res.json();
@@ -71,16 +105,17 @@ export default function AdminDashboard() {
         fetchUsers();
         fetchStats();
       } else {
-        toast.error(result.error || "Ghalat ya Expired Token!");
+        toast.error(result.error || "Upload fail ho gaya.");
       }
     } catch (err) {
-      toast.error("Network Error: Backend se rabta nahi ho saka");
+      toast.error("Network Error: Backend down hai.");
     } finally {
       setBulkLoading(false);
       e.target.value = ''; 
     }
   };
 
+  // --- 4. IMAGE UPLOAD (CLOUDINARY) ---
   const handleImageUpload = async (file) => {
     if (!file) return;
     const data = new FormData();
@@ -88,97 +123,70 @@ export default function AdminDashboard() {
 
     try {
       setUploading(true);
-      toast.loading("Processing image on Lahore server...");
-      
       const res = await fetch(`${API_BASE}/admin/upload-image`, {
         method: "POST",
         body: data
       });
-      
       const result = await res.json();
-      toast.dismiss();
 
       if (result.url) {
         setFormData(prev => ({ ...prev, profile_pic: result.url }));
-        toast.success("Image uploaded successfully!");
-      } else {
-        throw new Error(result.error || "Upload failed");
+        toast.success("Profile picture set!");
       }
     } catch (err) {
-      toast.error("Upload Error: " + err.message);
+      toast.error("Image upload fail!");
     } finally {
       setUploading(false);
     }
   };
 
-  const fetchUsers = useCallback(async (query = "") => {
-    try {
-      setLoading(true);
-      const res = await fetch(`${API_BASE}/admin/users?search=${query}`);
-      const data = await res.json();
-      setUsers(Array.isArray(data) ? data : []);
-    } catch (err) {
-      toast.error("Lahore Portal sync error!");
-    } finally {
-      setLoading(false);
-    }
-  }, [API_BASE]);
-
-  const fetchStats = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_BASE}/admin/stats`);
-      const data = await res.json();
-      setStats({
-        students: data.students || 0,
-        teachers: data.teachers || 0,
-        courses: data.subjects || 0
-      });
-    } catch (err) { console.error("Stats error"); }
-  }, [API_BASE]);
-
-  useEffect(() => {
-    fetchStats();
-    fetchUsers();
-  }, [fetchUsers, fetchStats]);
-
-  const handleSearch = (e) => {
-    const value = e.target.value;
-    setSearchTerm(value);
-    fetchUsers(value); 
-  };
-
-  const handleDelete = async (id) => {
-    if (!id) return;
-    if (confirm("Delete this user?")) {
-      try {
-        const res = await fetch(`${API_BASE}/admin/users/${id}`, { method: 'DELETE' });
-        if (res.ok) {
-          toast.success("User deleted!");
-          fetchUsers(searchTerm); 
-        }
-      } catch (err) { toast.error("Delete failed"); }
-    }
-  };
-
+  // --- 5. SAVE / UPDATE USER ---
   const handleSaveUser = async (e) => {
     e.preventDefault();
     const method = editingUserId ? 'PUT' : 'POST';
     const url = editingUserId ? `${API_BASE}/admin/users/${editingUserId}` : `${API_BASE}/admin/users`;
+    
     try {
+      const token = getAuthToken();
       const res = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(formData)
       });
+
       if (res.ok) {
-        toast.success(editingUserId ? "Updated!" : "Success!");
+        toast.success(editingUserId ? "User updated!" : "User created!");
         closeModal();
         fetchUsers(searchTerm);
         fetchStats();
+      } else {
+        const errData = await res.json();
+        toast.error(errData.error || "Ghalti!");
       }
-    } catch (err) { toast.error("Error saving user"); }
+    } catch (err) { toast.error("Server connection lost"); }
   };
 
+  // --- 6. DELETE USER ---
+  const handleDelete = async (id) => {
+    if (!confirm("Kya aap waqai is user ko delete karna chahte hain?")) return;
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`${API_BASE}/admin/users/${id}`, { 
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        toast.success("User removed.");
+        fetchUsers(searchTerm); 
+        fetchStats();
+      }
+    } catch (err) { toast.error("Delete failed"); }
+  };
+
+  // --- MODAL CONTROLS ---
   const openModal = (user = null) => {
     if (user) {
       setEditingUserId(user.id);
@@ -186,7 +194,7 @@ export default function AdminDashboard() {
         name: user.name || '', 
         email: user.email || '', 
         role: user.role || 'student', 
-        password: '',
+        password: '', // Password update optional rakhein
         profile_pic: user.profile_pic || ''
       });
     }
@@ -200,31 +208,34 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto min-h-screen bg-[#0a0f1c] text-white">
-      <div className="mb-10 flex justify-between items-end">
+    <div className="p-8 max-w-7xl mx-auto min-h-screen bg-[#0a0f1c] text-white font-sans">
+      {/* HEADER SECTION */}
+      <div className="mb-10 flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
-          <h1 className="text-3xl font-black italic text-green-500 tracking-tighter uppercase">Admin Control Panel</h1>
+          <h1 className="text-4xl font-black italic text-green-500 tracking-tighter uppercase">Admin Control Panel</h1>
           <p className="text-gray-500 text-sm">Lahore Education Portal | Master Overview</p>
         </div>
         
         <div className="flex gap-3">
-          <label className={`cursor-pointer ${bulkLoading ? 'bg-gray-700' : 'bg-blue-600 hover:bg-blue-700'} px-6 py-2 rounded-xl font-bold flex items-center gap-2 transition-all`}>
-            {bulkLoading ? "Processing..." : <><FileUp size={18}/> Bulk Upload (CSV)</>}
+          <label className={`cursor-pointer ${bulkLoading ? 'bg-gray-700' : 'bg-blue-600 hover:bg-blue-700'} px-6 py-2 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg`}>
+            {bulkLoading ? "Wait..." : <><FileUp size={18}/> Bulk CSV</>}
             <input type="file" className="hidden" accept=".csv" onChange={handleBulkUpload} disabled={bulkLoading} />
           </label>
 
-          <button onClick={() => openModal()} className="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-xl font-bold flex items-center gap-2">
-            <Users size={18}/> Add New User
+          <button onClick={() => openModal()} className="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-xl font-bold flex items-center gap-2 shadow-lg">
+            <Users size={18}/> Add User
           </button>
         </div>
       </div>
 
+      {/* STATS GRID */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
         <StatCard icon={<GraduationCap/>} label="Total Students" value={stats.students} color="blue" />
         <StatCard icon={<Users/>} label="Total Teachers" value={stats.teachers} color="green" />
         <StatCard icon={<BookOpen/>} label="Active Subjects" value={stats.courses} color="purple" />
       </div>
 
+      {/* USERS TABLE */}
       <div className="bg-[#161d2f] rounded-2xl border border-gray-800 overflow-hidden shadow-2xl">
         <div className="p-6 border-b border-gray-800 flex justify-between items-center bg-gray-900/20">
           <h2 className="font-bold text-lg italic text-gray-300">Registered Portal Users</h2>
@@ -233,77 +244,83 @@ export default function AdminDashboard() {
             <input 
               type="text" 
               value={searchTerm}
-              placeholder="Search user by name or email..." 
+              placeholder="Search by name or email..." 
               className="w-full bg-gray-900/50 border border-gray-800 rounded-lg py-1.5 pl-9 pr-4 text-sm outline-none focus:border-green-500"
-              onChange={handleSearch} 
+              onChange={(e) => { setSearchTerm(e.target.value); fetchUsers(e.target.value); }} 
             />
           </div>
         </div>
         
-        {loading ? (
-          <div className="p-10 text-center text-gray-500 animate-pulse">Searching Lahore DB...</div>
-        ) : (
-          <table className="w-full text-left">
-            <thead className="bg-gray-900/50 text-gray-500 text-[10px] uppercase tracking-widest">
-              <tr>
-                <th className="px-8 py-5">User Details</th>
-                <th className="px-8 py-5">Role</th>
-                <th className="px-8 py-5 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-800/50">
-              {users.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-800/40 transition-colors group">
-                  <td className="px-8 py-5">
-                    <div className="flex items-center gap-3">
-                      {user.profile_pic ? (
-                        <img src={user.profile_pic} className="w-10 h-10 rounded-full object-cover border border-gray-700" alt="profile" />
-                      ) : (
-                        <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center text-[8px] text-gray-500">No Image</div>
-                      )}
-                      <div>
-                        <div className="font-bold text-gray-200">{user.name}</div>
-                        <div className="text-xs text-gray-400 italic">{user.email}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-8 py-5">
-                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${
-                      user.role === 'teacher' ? 'bg-purple-500/20 text-purple-400' : 'bg-blue-500/20 text-blue-400'
-                    }`}>
-                      {user.role}
-                    </span>
-                  </td>
-                  <td className="px-8 py-5 text-right">
-                    <div className="flex justify-end gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => openModal(user)} className="text-gray-400 hover:text-green-500 transition-colors"><Edit size={18}/></button>
-                      <button onClick={() => handleDelete(user.id)} className="text-gray-400 hover:text-red-500 transition-colors"><Trash2 size={18}/></button>
-                    </div>
-                  </td>
+        <div className="overflow-x-auto">
+          {loading ? (
+            <div className="p-20 text-center text-gray-500 animate-pulse font-bold uppercase tracking-widest">Lahore DB Syncing...</div>
+          ) : (
+            <table className="w-full text-left">
+              <thead className="bg-gray-900/50 text-gray-500 text-[10px] uppercase tracking-widest">
+                <tr>
+                  <th className="px-8 py-5">User Details</th>
+                  <th className="px-8 py-5">Role</th>
+                  <th className="px-8 py-5 text-right">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+              </thead>
+              <tbody className="divide-y divide-gray-800/50">
+                {users.length > 0 ? users.map((user) => (
+                  <tr key={user.id} className="hover:bg-gray-800/40 transition-colors group">
+                    <td className="px-8 py-5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gray-800 border border-gray-700 overflow-hidden flex items-center justify-center">
+                            {user.profile_pic ? (
+                                <img src={user.profile_pic} className="w-full h-full object-cover" alt="pfp" />
+                            ) : (
+                                <Users size={16} className="text-gray-600" />
+                            )}
+                        </div>
+                        <div>
+                          <div className="font-bold text-gray-200">{user.name}</div>
+                          <div className="text-xs text-gray-400 italic">{user.email}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-8 py-5">
+                      <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${
+                        user.role === 'teacher' ? 'bg-purple-500/20 text-purple-400' : 
+                        user.role === 'admin' ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'
+                      }`}>
+                        {user.role}
+                      </span>
+                    </td>
+                    <td className="px-8 py-5 text-right">
+                      <div className="flex justify-end gap-4 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => openModal(user)} className="text-gray-400 hover:text-green-500 transition-colors"><Edit size={18}/></button>
+                        <button onClick={() => handleDelete(user.id)} className="text-gray-400 hover:text-red-500 transition-colors"><Trash2 size={18}/></button>
+                      </div>
+                    </td>
+                  </tr>
+                )) : (
+                    <tr><td colSpan="3" className="p-10 text-center text-gray-600">No users found.</td></tr>
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
 
+      {/* USER MODAL */}
       {showModal && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-[#161d2f] border border-gray-800 w-full max-w-md rounded-2xl p-8 relative shadow-2xl">
             <button onClick={closeModal} className="absolute right-4 top-4 text-gray-500 hover:text-white"><X size={22}/></button>
-            <h2 className="text-2xl font-black mb-6 italic text-green-500 uppercase">{editingUserId ? "Edit User" : "Create User"}</h2>
+            <h2 className="text-2xl font-black mb-6 italic text-green-500 uppercase">{editingUserId ? "Update Profile" : "New Portal Account"}</h2>
+            
             <form onSubmit={handleSaveUser} className="space-y-4">
+              {/* Image Upload Area */}
               <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-800 rounded-xl p-4 bg-gray-900/30">
-                {formData.profile_pic ? (
-                  <div className="relative">
-                    <img src={formData.profile_pic} className="w-20 h-20 rounded-full object-cover mb-2 border-2 border-green-500" alt="Preview" />
-                    <CheckCircle className="absolute bottom-2 right-0 text-green-500 bg-black rounded-full" size={16} />
-                  </div>
-                ) : (
-                  <Upload className="text-gray-600 mb-2" size={30} />
-                )}
+                <div className="relative w-20 h-20 rounded-full bg-gray-800 overflow-hidden mb-2 border-2 border-green-500/30">
+                    {formData.profile_pic ? <img src={formData.profile_pic} className="w-full h-full object-cover" /> : <Upload className="m-auto mt-5 text-gray-700" />}
+                    {uploading && <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-[8px]">...</div>}
+                </div>
                 <label className="cursor-pointer text-[10px] font-black uppercase text-green-500 hover:underline">
-                  {uploading ? "Uploading..." : "Click to select picture"}
+                  {uploading ? "Uploading..." : "Change Picture"}
                   <input type="file" className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e.target.files[0])} />
                 </label>
               </div>
@@ -315,17 +332,21 @@ export default function AdminDashboard() {
                 <InputField label="Password" type="password" value={formData.password} onChange={(v) => setFormData({...formData, password: v})} />
               )}
 
-              <select 
-                value={formData.role} 
-                className="w-full bg-gray-900 border border-gray-800 rounded-xl p-3 text-white outline-none focus:border-green-500 text-sm"
-                onChange={(e) => setFormData({...formData, role: e.target.value})}
-              >
-                <option value="student">Student</option>
-                <option value="teacher">Teacher</option>
-              </select>
+              <div>
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1 block">User Role</label>
+                <select 
+                    value={formData.role} 
+                    className="w-full bg-gray-900 border border-gray-800 rounded-xl p-3 text-white outline-none focus:border-green-500 text-sm"
+                    onChange={(e) => setFormData({...formData, role: e.target.value})}
+                >
+                    <option value="student">Student</option>
+                    <option value="teacher">Teacher</option>
+                    <option value="admin">Admin</option>
+                </select>
+              </div>
 
-              <button type="submit" disabled={uploading} className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-700 text-white py-4 rounded-xl font-black uppercase tracking-widest transition-all">
-                {editingUserId ? "Update Account" : "Create Account"}
+              <button type="submit" disabled={uploading} className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-800 text-white py-4 rounded-xl font-black uppercase tracking-widest transition-all mt-4">
+                {editingUserId ? "Save Changes" : "Create Account"}
               </button>
             </form>
           </div>
@@ -335,12 +356,16 @@ export default function AdminDashboard() {
   );
 }
 
+// --- HELPER COMPONENTS ---
 function StatCard({icon, label, value, color}) {
   const colors = { blue: "bg-blue-500/10 text-blue-500", green: "bg-green-500/10 text-green-500", purple: "bg-purple-500/10 text-purple-500" };
   return (
-    <div className="bg-[#161d2f] p-6 rounded-2xl border border-gray-800 flex items-center gap-5">
+    <div className="bg-[#161d2f] p-6 rounded-2xl border border-gray-800 flex items-center gap-5 shadow-lg">
       <div className={`p-4 rounded-xl ${colors[color]}`}>{icon}</div>
-      <div><p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">{label}</p><h2 className="text-4xl font-black">{value}</h2></div>
+      <div>
+        <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">{label}</p>
+        <h2 className="text-4xl font-black">{value}</h2>
+      </div>
     </div>
   );
 }
@@ -353,7 +378,7 @@ function InputField({label, type="text", value, onChange}) {
         required 
         type={type} 
         value={value || ''} 
-        className="w-full bg-gray-900 border border-gray-800 rounded-xl p-3 text-white outline-none focus:border-green-500 text-sm" 
+        className="w-full bg-gray-900 border border-gray-800 rounded-xl p-3 text-white outline-none focus:border-green-500 text-sm transition-all" 
         onChange={(e) => onChange(e.target.value)} 
       />
     </div>

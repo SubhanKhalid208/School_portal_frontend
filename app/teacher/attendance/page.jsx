@@ -39,10 +39,13 @@ export default function AttendancePage() {
     initData();
   }, []);
 
+  // ✅ FIXED: Using getApiUrl here to prevent 404 errors
   useEffect(() => {
     if (selectedCourse) {
       const today = new Date().toISOString().split('T')[0];
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/attendance/check-status?date=${today}&courseId=${selectedCourse}`)
+      const statusUrl = getApiUrl(`/attendance/check-status?date=${today}&courseId=${selectedCourse}`);
+      
+      fetchWithRetry(statusUrl, { method: 'GET' }, 1)
         .then(res => res.json())
         .then(data => {
           setMarkedStudents(Array.isArray(data) ? data : []);
@@ -60,6 +63,7 @@ export default function AttendancePage() {
     }
 
     try {
+      // ✅ FIXED: Standardized URL construction
       const url = getApiUrl('/attendance/mark');
       const res = await fetchWithRetry(url, {
         method: 'POST',
@@ -75,6 +79,7 @@ export default function AttendancePage() {
 
       if (res.ok) {
         toast.success(`✅ ${status === 'present' ? 'Present' : 'Absent'} mark ho gayi!`);
+        // UI update so user can't click again immediately
         setMarkedStudents(prev => [...prev, studentId]);
       } else {
         const error = await res.json();
@@ -93,7 +98,7 @@ export default function AttendancePage() {
       <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white">Teacher Attendance Panel</h1>
-          <p className="text-gray-400 italic">Subhan, aaj ki attendance lagayein.</p>
+          <p className="text-gray-400 italic font-medium">As-Salam-u-Alaikum Subhan! Aaj ki attendance lagayein.</p>
         </div>
 
         <div className="flex flex-col gap-1">
@@ -118,7 +123,7 @@ export default function AttendancePage() {
           <thead className="bg-[#1f2937] text-gray-400 text-sm">
             <tr>
               <th className="p-4">Student Name</th>
-              <th className="p-4 text-center">Action (Next 24 Hours)</th>
+              <th className="p-4 text-center">Action</th>
             </tr>
           </thead>
           <tbody className="text-gray-300">
@@ -161,7 +166,7 @@ export default function AttendancePage() {
               );
             }) : (
               <tr>
-                <td colSpan="2" className="p-10 text-center text-gray-500">Koi students nahi miley.</td>
+                <td colSpan="2" className="p-10 text-center text-gray-500">No students enrolled in this Lahore Portal branch yet.</td>
               </tr>
             )}
           </tbody>

@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState, use } from 'react'; 
 import { toast } from 'react-hot-toast';
-import { BookOpen, GraduationCap, TrendingUp, CheckCircle, Calendar, Info } from 'lucide-react';
+import { BookOpen, GraduationCap, TrendingUp, CheckCircle, Calendar, Info, MapPin } from 'lucide-react';
 
 export default function StudentDashboardPage({ params }) {
   const resolvedParams = use(params);
@@ -10,8 +10,7 @@ export default function StudentDashboardPage({ params }) {
   const [data, setData] = useState({ 
     attendancePercentage: 0, 
     totalPresent: 0, 
-    totalDays: 0, 
-    history: [] 
+    totalDays: 0 
   });
   
   const [courses, setCourses] = useState([]); 
@@ -35,38 +34,24 @@ export default function StudentDashboardPage({ params }) {
           'Authorization': `Bearer ${token}`
         };
 
-        const statsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/student/attendance/student/${studentId}`, {
-          method: 'GET',
-          headers: headers,
-          cache: 'no-store' 
-        });
+        // Optimized: Dono requests aik sath jayengi
+        const [statsRes, coursesRes] = await Promise.all([
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/student/attendance/student/${studentId}`, { headers, cache: 'no-store' }),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/student/my-courses/${studentId}`, { headers, cache: 'no-store' })
+        ]);
 
-        if (statsRes.status === 401 || statsRes.status === 403) {
+        if (statsRes.status === 401 || coursesRes.status === 401) {
           toast.error("Access Denied! Token invalid.");
           return;
         }
 
         const statsResult = await statsRes.json();
-        if (statsResult.success) {
-          setData(statsResult);
-        }
-
-        const coursesRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/student/my-courses/${studentId}`, {
-          method: 'GET',
-          headers: headers,
-          cache: 'no-store'
-        });
-
         const coursesResult = await coursesRes.json();
-        
-        if (coursesResult.success) {
-          setCourses(coursesResult.courses || []);
-        } else {
-          console.error("Course Fetch Error:", coursesResult.error);
-        }
+
+        if (statsResult.success) setData(statsResult);
+        if (coursesResult.success) setCourses(coursesResult.courses || []);
 
       } catch (err) {
-        console.error("Dashboard Fetch Error:", err);
         toast.error("Lahore Portal: Connection error!");
       } finally {
         setLoading(false);
@@ -78,76 +63,116 @@ export default function StudentDashboardPage({ params }) {
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-[#0a0f1c]">
-      <div className="text-green-500 text-xl font-semibold animate-pulse italic">
-        Loading Lahore Portal Data for ID: {studentId}...
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+        <div className="text-green-500 text-xl font-black italic animate-pulse uppercase tracking-tighter">
+          Lahore Portal Syncing...
+        </div>
       </div>
     </div>
   );
 
   return (
-    <div className="p-4 max-w-7xl mx-auto text-white">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Student Dashboard</h1>
-        <p className="text-gray-400 font-medium">Lahore Education Portal: Overview for ID {studentId}</p>
-      </div>
-
-      {/* Stats Section */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-        <div className="bg-[#161d2f] p-8 rounded-3xl border border-gray-800 shadow-xl relative overflow-hidden group">
-          <TrendingUp className="absolute right-4 top-4 text-green-500/20 group-hover:scale-110 transition-transform" size={60} />
-          <p className="text-gray-400 text-sm font-semibold uppercase tracking-wider">Attendance</p>
-          <h2 className="text-5xl font-extrabold text-green-500 mt-2">{data.attendancePercentage}%</h2>
-          <div className="w-full bg-gray-700 h-2 mt-4 rounded-full overflow-hidden">
-             <div className="bg-green-500 h-full transition-all duration-1000" style={{ width: `${data.attendancePercentage}%` }}></div>
+    <div className="p-6 max-w-7xl mx-auto text-white min-h-screen">
+      {/* Welcome Header */}
+      <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-black italic text-green-500 tracking-tighter uppercase">Student Dashboard</h1>
+          <div className="flex items-center gap-2 text-gray-500 mt-1">
+            <MapPin size={14} className="text-red-500" />
+            <p className="text-sm font-bold uppercase tracking-widest">Lahore Education Hub | ID: {studentId}</p>
           </div>
         </div>
-
-        <div className="bg-[#161d2f] p-8 rounded-3xl border border-gray-800 shadow-xl relative overflow-hidden group">
-          <CheckCircle className="absolute right-4 top-4 text-blue-500/20 group-hover:scale-110 transition-transform" size={60} />
-          <p className="text-gray-400 text-sm font-semibold uppercase tracking-wider">Present Days</p>
-          <h2 className="text-5xl font-extrabold text-blue-500 mt-2">{data.totalPresent}</h2>
-          <p className="text-xs text-gray-500 mt-4">Total sessions attended</p>
+        <div className="bg-[#161d2f] px-6 py-3 rounded-2xl border border-gray-800 shadow-lg">
+            <p className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em]">Current Session</p>
+            <p className="text-sm font-bold text-green-400">2025 - 2026</p>
         </div>
+      </div>
 
-        <div className="bg-[#161d2f] p-8 rounded-3xl border border-gray-800 shadow-xl relative overflow-hidden group">
-          <Calendar className="absolute right-4 top-4 text-purple-500/20 group-hover:scale-110 transition-transform" size={60} />
-          <p className="text-gray-400 text-sm font-semibold uppercase tracking-wider">Total Days</p>
-          <h2 className="text-5xl font-extrabold text-purple-500 mt-2">{data.totalDays}</h2>
-          <p className="text-xs text-gray-500 mt-4">Working days in Lahore Portal</p>
-        </div>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+        <StatWidget 
+          icon={<TrendingUp size={40}/>} 
+          label="Overall Attendance" 
+          value={`${data.attendancePercentage}%`} 
+          color="green" 
+          progress={data.attendancePercentage}
+        />
+        <StatWidget 
+          icon={<CheckCircle size={40}/>} 
+          label="Present Days" 
+          value={data.totalPresent} 
+          color="blue" 
+          subText="Days attended"
+        />
+        <StatWidget 
+          icon={<Calendar size={40}/>} 
+          label="Total Academic Days" 
+          value={data.totalDays} 
+          color="purple" 
+          subText="Working sessions"
+        />
       </div>
 
       {/* Courses Section */}
       <div className="mb-10">
-        <div className="flex items-center space-x-3 mb-6">
-          <BookOpen className="text-green-500" size={28} />
-          <h2 className="text-2xl font-bold">My Registered Courses</h2>
+        <div className="flex items-center gap-3 mb-8">
+          <div className="p-2 bg-green-500/20 rounded-lg">
+            <BookOpen className="text-green-500" size={24} />
+          </div>
+          <h2 className="text-2xl font-black italic uppercase tracking-tight">Registered Courses</h2>
         </div>
         
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {courses.length > 0 ? (
-            courses.map((course, index) => (
-              <div key={index} className="bg-[#161d2f] p-6 rounded-2xl border border-gray-800 hover:border-green-500/50 transition-all hover:-translate-y-1 shadow-md">
-                <div className="flex items-center space-x-4">
-                  <div className="bg-green-500/10 p-3 rounded-xl text-green-500">
-                    <GraduationCap size={24} />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-white text-lg">{course.subject_name || "General Subject"}</h3>
-                    <p className="text-xs text-gray-500">Course ID: LP-00{index + 1}</p>
-                  </div>
+        {courses.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {courses.map((course, index) => (
+              <div key={index} className="group bg-[#161d2f] p-8 rounded-3xl border border-gray-800 hover:border-green-500/50 transition-all duration-300 hover:shadow-[0_0_30px_rgba(34,197,94,0.1)] relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                    <GraduationCap size={80} />
+                </div>
+                <div className="relative z-10">
+                  <span className="text-[10px] font-black bg-green-500/10 text-green-500 px-3 py-1 rounded-full uppercase tracking-widest">Active Course</span>
+                  <h3 className="font-black text-white text-xl mt-4 uppercase tracking-tighter">{course.subject_name || "General Subject"}</h3>
+                  <p className="text-xs text-gray-500 mt-2 font-mono">CODE: LP-{studentId}-{index + 101}</p>
                 </div>
               </div>
-            ))
-          ) : (
-            <div className="col-span-full py-10 px-6 text-center text-gray-400 border border-dashed border-gray-700 rounded-3xl bg-[#161d2f]/50">
-              <Info className="mx-auto mb-3 text-blue-500" size={40} />
-              <h3 className="text-xl font-semibold italic">No Courses Found</h3>
-              <p className="mt-2">If you were added via CSV, please wait for admin approval or check your connection.</p>
-            </div>
-          )}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="py-20 text-center border-2 border-dashed border-gray-800 rounded-[40px] bg-[#161d2f]/30">
+            <Info className="mx-auto mb-4 text-blue-500/50" size={48} />
+            <h3 className="text-xl font-black italic uppercase text-gray-400">No Courses Registered</h3>
+            <p className="text-gray-600 mt-2 max-w-xs mx-auto text-sm">Please contact the Lahore Portal admin office to link your subjects.</p>
+          </div>
+        )}
       </div>
+    </div>
+  );
+}
+
+// --- Internal Helper Component ---
+function StatWidget({icon, label, value, color, progress, subText}) {
+  const colors = {
+    green: "text-green-500 bg-green-500/10",
+    blue: "text-blue-500 bg-blue-500/10",
+    purple: "text-purple-500 bg-purple-500/10"
+  };
+
+  return (
+    <div className="bg-[#161d2f] p-8 rounded-[32px] border border-gray-800 shadow-2xl relative overflow-hidden group hover:border-gray-700 transition-all">
+      <div className={`absolute right-4 top-4 opacity-20 group-hover:scale-110 transition-transform duration-500 ${colors[color].split(' ')[0]}`}>
+        {icon}
+      </div>
+      <p className="text-gray-500 text-[10px] font-black uppercase tracking-[0.2em]">{label}</p>
+      <h2 className={`text-6xl font-black mt-2 tracking-tighter ${colors[color].split(' ')[0]}`}>{value}</h2>
+      
+      {progress !== undefined ? (
+        <div className="w-full bg-gray-800 h-2 mt-6 rounded-full overflow-hidden">
+          <div className="bg-green-500 h-full transition-all duration-1000" style={{ width: `${progress}%` }}></div>
+        </div>
+      ) : (
+        <p className="text-xs text-gray-600 mt-6 font-bold uppercase tracking-widest">{subText}</p>
+      )}
     </div>
   );
 }
