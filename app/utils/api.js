@@ -25,13 +25,21 @@ export const getApiUrl = (endpoint) => {
   }
 
   // 2. Logic to prevent double "/api/api"
-  if (base.toLowerCase().endsWith('/api')) {
-    const finalEndpoint = cleanEndpoint.replace(/^\/api\//, '/');
-    return `${base}${finalEndpoint}`;
+  const baseHasApi = base.toLowerCase().endsWith('/api');
+  const endpointHasApi = cleanEndpoint.toLowerCase().startsWith('/api/');
+
+  if (baseHasApi && endpointHasApi) {
+    // Agar dono jagah /api hai, to endpoint wala remove karein
+    return `${base}${cleanEndpoint.substring(4)}`; 
   }
 
-  // 3. If base is just the domain, add "/api" manually
-  return `${base}/api${cleanEndpoint}`;
+  if (!baseHasApi && !endpointHasApi) {
+    // Agar kisi jagah bhi nahi hai, to manually add karein
+    return `${base}/api${cleanEndpoint}`;
+  }
+
+  // 3. Normal case (ek jagah /api maujood hai)
+  return `${base}${cleanEndpoint}`;
 };
 
 /**
@@ -41,14 +49,14 @@ export const fetchWithRetry = async (url, options = {}, retries = 1) => {
   try {
     const response = await fetch(url, {
       ...options,
-      // ✅ LOGIC CHANGE: Production mein CORS issues se bachne ke liye 
-      // 'same-origin' default rakha hai, login ke liye manual handle behtar hai.
-      credentials: options.credentials || 'same-origin',
+      // Production mein session cookies ke liye 'include' barkarar rakha hai
+      credentials: options.credentials || 'include',
       cache: 'no-store' 
     });
 
     if (response.ok) return response;
 
+    // Retry only for Server Errors (500+)
     if (retries > 0 && response.status >= 500) {
       console.warn(`⚠️ Lahore Portal: Server error ${response.status}, retrying...`);
       await new Promise(res => setTimeout(res, 500));
@@ -72,17 +80,20 @@ export const fetchWithRetry = async (url, options = {}, retries = 1) => {
 export const safeApiCall = async (endpoint, options = {}) => {
   try {
     const url = getApiUrl(endpoint);
+    // Debugging line taake aap console mein sahi URL dekh sakein
+    console.log("🌐 Lahore Portal Request:", url); 
+    
     const response = await fetchWithRetry(url, options);
 
     const contentType = response.headers.get('content-type');
     let data = null;
 
-    // ✅ DEBUGGING ADDED: Agar JSON nahi milta to console mein text print hoga
     if (contentType && contentType.includes('application/json')) {
       data = await response.json();
     } else {
-      const errorText = await response.text();
-      console.error("Backend returned non-JSON response:", errorText);
+      // Non-JSON response (like 404 HTML) ko debug karne ke liye
+      const errorBody = await response.text();
+      console.error("⚠️ Non-JSON Response received:", errorBody);
     }
 
     if (!response.ok) {
