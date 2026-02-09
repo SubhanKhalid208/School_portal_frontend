@@ -19,7 +19,10 @@ export default function AttendanceReportPage({ params }) {
         setLoading(true);
         const token = localStorage.getItem('token');
 
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/student/attendance/student/${studentId}`, {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+        const baseApi = API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`;
+
+        const res = await fetch(`${baseApi}/student/attendance/student/${studentId}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
