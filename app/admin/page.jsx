@@ -23,8 +23,8 @@ export default function AdminDashboard() {
   });
 
   // ✅ Fixed API URL for Lahore Portal (Railway Backend)
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://schoolportalbackend-production-e803.up.railway.app/api";
-
+// Aakhir se /api hata dena behtar hai agar aap nichay endpoints mein khud /api likh rahay hain
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://schoolportalbackend-production-e803.up.railway.app";
   // --- HELPER: GET AUTH TOKEN (SSR Safe) ---
   const getAuthToken = useCallback(() => {
     const token = Cookies.get('token');
