@@ -22,11 +22,13 @@ export default function AdminDashboard() {
     profile_pic: '' 
   });
 
-  // Modal ref to handle outside click
+  // Modal ref to detect outside clicks
   const modalRef = useRef(null);
 
+  // ✅ Fixed API URL for Lahore Portal (Railway Backend)
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://schoolportalbackend-production-e803.up.railway.app";
 
+  // --- HELPER: GET AUTH TOKEN (SSR Safe) ---
   const getAuthToken = useCallback(() => {
     const token = Cookies.get('token');
     if (token) return token;
@@ -36,6 +38,7 @@ export default function AdminDashboard() {
     return null;
   }, []);
 
+  // --- 1. FETCH STATS ---
   const fetchStats = useCallback(async () => {
     try {
       const token = getAuthToken();
@@ -51,9 +54,12 @@ export default function AdminDashboard() {
           courses: result.data.subjects || 0
         });
       }
-    } catch (err) { console.error("Stats fetch failed"); }
+    } catch (err) { 
+        console.error("Stats fetch failed"); 
+    }
   }, [API_BASE, getAuthToken]);
 
+  // --- 2. FETCH USERS (WITH SEARCH) ---
   const fetchUsers = useCallback(async (query = "") => {
     try {
       setLoading(true);
@@ -76,6 +82,7 @@ export default function AdminDashboard() {
     fetchUsers();
   }, [fetchUsers, fetchStats]);
 
+  // --- 3. BULK UPLOAD HANDLER ---
   const handleBulkUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -88,7 +95,7 @@ export default function AdminDashboard() {
     data.append('file', file);
     try {
       setBulkLoading(true);
-      const loadingToast = toast.loading("Uploading students...");
+      const loadingToast = toast.loading("Uploading students to Lahore Portal...");
       const res = await fetch(`${API_BASE}/student/bulk-upload`, {
         method: 'POST',
         body: data,
@@ -103,10 +110,15 @@ export default function AdminDashboard() {
       } else {
         toast.error(result.error || "Upload fail ho gaya.");
       }
-    } catch (err) { toast.error("Network Error: Backend down."); }
-    finally { setBulkLoading(false); e.target.value = ''; }
+    } catch (err) {
+      toast.error("Network Error: Backend down hai.");
+    } finally {
+      setBulkLoading(false);
+      e.target.value = ''; 
+    }
   };
 
+  // --- 4. IMAGE UPLOAD (CLOUDINARY) ---
   const handleImageUpload = async (file) => {
     if (!file) return;
     const token = getAuthToken();
@@ -124,10 +136,14 @@ export default function AdminDashboard() {
         setFormData(prev => ({ ...prev, profile_pic: result.url }));
         toast.success("Profile picture set!");
       }
-    } catch (err) { toast.error("Image upload fail!"); }
-    finally { setUploading(false); }
+    } catch (err) {
+      toast.error("Image upload fail!");
+    } finally {
+      setUploading(false);
+    }
   };
 
+  // --- 5. SAVE / UPDATE USER ---
   const handleSaveUser = async (e) => {
     e.preventDefault();
     const method = editingUserId ? 'PUT' : 'POST';
@@ -154,8 +170,9 @@ export default function AdminDashboard() {
     } catch (err) { toast.error("Server connection lost"); }
   };
 
+  // --- 6. DELETE USER ---
   const handleDelete = async (id) => {
-    if (!confirm("Kya aap waqai delete karna chahte hain?")) return;
+    if (!confirm("Kya aap waqai is user ko delete karna chahte hain?")) return;
     try {
       const token = getAuthToken();
       const res = await fetch(`${API_BASE}/admin/users/${id}`, { 
@@ -171,6 +188,7 @@ export default function AdminDashboard() {
     } catch (err) { toast.error("Delete failed"); }
   };
 
+  // --- MODAL CONTROLS ---
   const openModal = (user = null) => {
     if (user) {
       setEditingUserId(user.id);
@@ -191,7 +209,7 @@ export default function AdminDashboard() {
     setFormData({ name: '', email: '', role: 'student', password: '', profile_pic: '' });
   };
 
-  // ✅ Function to handle outside click
+  // Close modal when clicking on overlay
   const handleOverlayClick = (e) => {
     if (modalRef.current && !modalRef.current.contains(e.target)) {
       closeModal();
@@ -212,7 +230,6 @@ export default function AdminDashboard() {
             {bulkLoading ? "Wait..." : <><FileUp size={18}/> Bulk CSV</>}
             <input type="file" className="hidden" accept=".csv" onChange={handleBulkUpload} disabled={bulkLoading} />
           </label>
-
           <button onClick={() => openModal()} className="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-xl font-bold flex items-center gap-2 shadow-lg">
             <Users size={18}/> Add User
           </button>
@@ -241,7 +258,6 @@ export default function AdminDashboard() {
             />
           </div>
         </div>
-        
         <div className="overflow-x-auto">
           {loading ? (
             <div className="p-20 text-center text-gray-500 animate-pulse font-bold uppercase tracking-widest">Lahore DB Syncing...</div>
@@ -296,35 +312,29 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* ✅ UPDATED MODAL WITH OUTSIDE CLICK AND PROPER SIZING */}
+      {/* ✅ COMPACT USER MODAL FIX */}
       {showModal && (
         <div 
-          className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4 transition-all"
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
           onClick={handleOverlayClick}
         >
           <div 
             ref={modalRef}
-            className="bg-[#161d2f] border border-gray-800 w-full max-w-md rounded-3xl p-8 relative shadow-[0_0_50px_rgba(0,0,0,0.5)] animate-in fade-in zoom-in duration-200"
+            className="bg-[#161d2f] border border-gray-800 w-full max-w-[400px] rounded-3xl p-6 relative shadow-2xl animate-in fade-in zoom-in duration-200"
           >
-            {/* ❌ Close Button */}
-            <button 
-              onClick={closeModal} 
-              className="absolute right-5 top-5 bg-gray-800/50 hover:bg-red-500/20 p-2 rounded-full text-gray-400 hover:text-red-500 transition-all border border-gray-700"
-            >
-              <X size={20}/>
-            </button>
-
-            <h2 className="text-2xl font-black mb-8 italic text-green-500 uppercase tracking-tight">
-              {editingUserId ? "Update Profile" : "New Portal Account"}
+            <button onClick={closeModal} className="absolute right-4 top-4 text-gray-500 hover:text-white"><X size={20}/></button>
+            
+            <h2 className="text-xl font-black mb-6 italic text-green-500 uppercase tracking-tight">
+              {editingUserId ? "Update Profile" : "New Account"}
             </h2>
             
-            <form onSubmit={handleSaveUser} className="space-y-5">
-              <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-800 rounded-2xl p-6 bg-gray-900/30">
-                <div className="relative w-24 h-24 rounded-full bg-gray-800 overflow-hidden mb-3 border-4 border-green-500/20">
-                    {formData.profile_pic ? <img src={formData.profile_pic} className="w-full h-full object-cover" /> : <Upload className="m-auto mt-7 text-gray-700" />}
-                    {uploading && <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-xs">...</div>}
+            <form onSubmit={handleSaveUser} className="space-y-4">
+              <div className="flex flex-col items-center justify-center border border-gray-800 rounded-2xl p-4 bg-gray-900/30">
+                <div className="relative w-16 h-16 rounded-full bg-gray-800 overflow-hidden mb-2 border border-green-500/20">
+                    {formData.profile_pic ? <img src={formData.profile_pic} className="w-full h-full object-cover" /> : <Upload className="m-auto mt-5 text-gray-700" size={20} />}
+                    {uploading && <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-[8px]">...</div>}
                 </div>
-                <label className="cursor-pointer text-[11px] font-black uppercase text-green-500 hover:text-green-400 transition-colors">
+                <label className="cursor-pointer text-[10px] font-black uppercase text-green-500 hover:underline">
                   {uploading ? "Uploading..." : "Change Picture"}
                   <input type="file" className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e.target.files[0])} />
                 </label>
@@ -338,10 +348,10 @@ export default function AdminDashboard() {
               )}
 
               <div>
-                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5 block px-1">User Role</label>
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1 block">User Role</label>
                 <select 
                     value={formData.role} 
-                    className="w-full bg-gray-900 border border-gray-800 rounded-xl p-3.5 text-white outline-none focus:border-green-500 text-sm transition-all appearance-none cursor-pointer"
+                    className="w-full bg-gray-900 border border-gray-800 rounded-xl p-3 text-white outline-none focus:border-green-500 text-sm"
                     onChange={(e) => setFormData({...formData, role: e.target.value})}
                 >
                     <option value="student">Student</option>
@@ -350,7 +360,7 @@ export default function AdminDashboard() {
                 </select>
               </div>
 
-              <button type="submit" disabled={uploading} className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-800 text-white py-4 rounded-2xl font-black uppercase tracking-widest transition-all shadow-lg hover:shadow-green-500/20 mt-4 active:scale-95">
+              <button type="submit" disabled={uploading} className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-800 text-white py-3.5 rounded-xl font-black uppercase tracking-widest text-xs transition-all mt-2 active:scale-95">
                 {editingUserId ? "Save Changes" : "Create Account"}
               </button>
             </form>
@@ -364,11 +374,11 @@ export default function AdminDashboard() {
 function StatCard({icon, label, value, color}) {
   const colors = { blue: "bg-blue-500/10 text-blue-500", green: "bg-green-500/10 text-green-500", purple: "bg-purple-500/10 text-purple-500" };
   return (
-    <div className="bg-[#161d2f] p-6 rounded-2xl border border-gray-800 flex items-center gap-5 shadow-lg">
-      <div className={`p-4 rounded-xl ${colors[color]}`}>{icon}</div>
+    <div className="bg-[#161d2f] p-5 rounded-2xl border border-gray-800 flex items-center gap-4 shadow-lg">
+      <div className={`p-3 rounded-xl ${colors[color]}`}>{icon}</div>
       <div>
         <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">{label}</p>
-        <h2 className="text-4xl font-black">{value}</h2>
+        <h2 className="text-3xl font-black">{value}</h2>
       </div>
     </div>
   );
@@ -377,12 +387,12 @@ function StatCard({icon, label, value, color}) {
 function InputField({label, type="text", value, onChange}) {
   return (
     <div>
-      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5 block px-1">{label}</label>
+      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1 block px-1">{label}</label>
       <input 
         required 
         type={type} 
         value={value || ''} 
-        className="w-full bg-gray-900 border border-gray-800 rounded-xl p-3.5 text-white outline-none focus:border-green-500 text-sm transition-all focus:ring-1 focus:ring-green-500/30" 
+        className="w-full bg-gray-900 border border-gray-800 rounded-xl p-3 text-white outline-none focus:border-green-500 text-sm transition-all" 
         onChange={(e) => onChange(e.target.value)} 
       />
     </div>
