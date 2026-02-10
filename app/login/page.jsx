@@ -16,7 +16,8 @@ export default function LoginPage() {
   }, []);
 
   const handleGoogleLogin = () => {
-    const backendURL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+    // Railway URL explicitly added for stability
+    const backendURL = process.env.NEXT_PUBLIC_API_URL || "https://schoolportalbackend-production-e803.up.railway.app";
     window.location.href = `${backendURL}/api/auth/google`;
   };
 
@@ -29,7 +30,6 @@ export default function LoginPage() {
     try {
       const result = await handleLogin(formData);
       
-      // Console par check karein ke role 'admin' hi aa raha hai
       console.log("🔐 Login Result:", result);
 
       if (result?.error) {
@@ -54,19 +54,21 @@ export default function LoginPage() {
           Cookies.set('userId', userId, { expires: 1, path: '/' });
         }
 
-        // 3. Optimized Redirect Logic (Matching your Folder Structure)
+        // 3. ✅ FIX: Paths updated to match your VS Code Folder Structure
         setTimeout(() => {
           if (userRole === 'admin') {
-            // Screenshot ke mutabiq ye sahi path hai
-            router.push('/dashboard/admin'); 
+            // Aapka folder app/admin hai, dashboard/admin nahi
+            router.push('/admin'); 
           } else if (userRole === 'teacher') {
+            // Aapka folder app/teacher hai
             router.push('/teacher');
           } else if (userRole === 'student') {
+            // Students abhi dashboard folder mein hain
             router.push(userId ? `/dashboard/student/${userId}` : '/dashboard/student');
           } else {
-            router.push('/dashboard');
+            router.push('/');
           }
-        }, 600); // 600ms delay taake browser cookies ko process kar le
+        }, 600); 
       }
     } catch (err) {
       console.error("❌ Critical Login Error:", err);
@@ -80,11 +82,12 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0a0f1c]">
       <div className="bg-[#161d2f] p-8 rounded-2xl shadow-xl w-full max-w-md border border-gray-700">
-        <h2 className="text-3xl font-bold text-white mb-6 text-center">Lahore Portal</h2>
+        <h2 className="text-3xl font-bold text-white mb-2 text-center">Lahore Portal</h2>
+        <p className="text-gray-500 text-center text-sm mb-6 uppercase tracking-widest font-bold">Official Login</p>
         
         <form onSubmit={onSubmit} className="space-y-5">
           <div>
-            <label className="block text-gray-400 mb-2 font-semibold">Email Address</label>
+            <label className="block text-gray-400 mb-2 font-semibold text-xs uppercase">Email Address</label>
             <input 
               name="email" 
               type="email" 
@@ -95,7 +98,7 @@ export default function LoginPage() {
           </div>
           
           <div>
-            <label className="block text-gray-400 mb-2 font-semibold">Password</label>
+            <label className="block text-gray-400 mb-2 font-semibold text-xs uppercase">Password</label>
             <input 
               name="password" 
               type="password" 
@@ -108,16 +111,16 @@ export default function LoginPage() {
           <button 
             disabled={loading}
             type="submit"
-            className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg transition-all shadow-lg active:scale-95"
+            className="w-full bg-green-600 hover:bg-green-700 text-white font-black uppercase tracking-widest py-4 rounded-xl transition-all shadow-lg active:scale-95 disabled:bg-gray-700"
           >
-            {loading ? 'Logging in...' : 'Login Now'}
+            {loading ? 'Authenticating...' : 'Login Portal'}
           </button>
         </form>
 
         <div className="mt-6">
           <div className="relative flex items-center justify-center mb-6">
             <div className="border-t border-gray-700 w-full"></div>
-            <span className="bg-[#161d2f] px-3 text-gray-500 text-sm absolute">OR</span>
+            <span className="bg-[#161d2f] px-3 text-gray-500 text-[10px] font-bold absolute">SECURE OAUTH</span>
           </div>
 
           <button 
@@ -126,15 +129,15 @@ export default function LoginPage() {
             className="w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-100 text-gray-900 font-bold py-3 rounded-lg transition-all"
           >
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="G" />
-            Continue with Google
+            Sign in with Google
           </button>
         </div>
 
         <div className="mt-6 text-center">
-          <p className="text-gray-400">
-            Account nahi hai?{' '}
-            <Link href="/register" className="text-green-500 hover:text-green-400 font-bold underline">
-              Register karein
+          <p className="text-gray-400 text-sm">
+            Naya account chahiye?{' '}
+            <Link href="/register" className="text-green-500 hover:underline font-bold">
+              Register here
             </Link>
           </p>
         </div>

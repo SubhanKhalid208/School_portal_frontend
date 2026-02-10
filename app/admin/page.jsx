@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react';
-import { Users, BookOpen, GraduationCap, Trash2, Edit, Search, X, Upload, CheckCircle, FileUp } from 'lucide-react';
+import { Users, BookOpen, GraduationCap, Trash2, Edit, Search, X, Upload, FileUp } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import Cookies from 'js-cookie';
 
@@ -22,25 +22,31 @@ export default function AdminDashboard() {
     profile_pic: '' 
   });
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+  // ✅ Fixed API URL for Lahore Portal (Railway Backend)
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://schoolportalbackend-production-e803.up.railway.app/api";
 
-  // --- HELPER: GET AUTH TOKEN ---
+  // --- HELPER: GET AUTH TOKEN (SSR Safe) ---
   const getAuthToken = useCallback(() => {
-    // Priority: Cookies (best for SSR/Auth) then LocalStorage
-    return Cookies.get('token') || localStorage.getItem('token');
+    const token = Cookies.get('token');
+    if (token) return token;
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('token');
+    }
+    return null;
   }, []);
 
   // --- 1. FETCH STATS ---
   const fetchStats = useCallback(async () => {
     try {
       const token = getAuthToken();
+      if (!token) return;
+
       const res = await fetch(`${API_BASE}/admin/stats`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const result = await res.json();
       
-      // Backend ab { success: true, data: {...} } bhej raha hai
-      if (result.success) {
+      if (result.success && result.data) {
         setStats({
           students: result.data.students || 0,
           teachers: result.data.teachers || 0,
@@ -57,12 +63,13 @@ export default function AdminDashboard() {
     try {
       setLoading(true);
       const token = getAuthToken();
+      if (!token) return;
+
       const res = await fetch(`${API_BASE}/admin/users?search=${query}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const result = await res.json();
       
-      // Data extract from result.data
       setUsers(result.success && Array.isArray(result.data) ? result.data : []);
     } catch (err) {
       toast.error("Lahore Portal sync error!");
@@ -71,7 +78,6 @@ export default function AdminDashboard() {
     }
   }, [API_BASE, getAuthToken]);
 
-  // Initial Load
   useEffect(() => {
     fetchStats();
     fetchUsers();
@@ -122,7 +128,7 @@ export default function AdminDashboard() {
   // --- 4. IMAGE UPLOAD (CLOUDINARY) ---
   const handleImageUpload = async (file) => {
     if (!file) return;
-    const token = getAuthToken(); // Token lazmi hai kyunke backend protected hai
+    const token = getAuthToken();
     const data = new FormData();
     data.append("file", file); 
 
@@ -252,7 +258,7 @@ export default function AdminDashboard() {
             <input 
               type="text" 
               value={searchTerm}
-              placeholder="Search by name or email..." 
+              placeholder="Search..." 
               className="w-full bg-gray-900/50 border border-gray-800 rounded-lg py-1.5 pl-9 pr-4 text-sm outline-none focus:border-green-500"
               onChange={(e) => { setSearchTerm(e.target.value); fetchUsers(e.target.value); }} 
             />
@@ -363,7 +369,6 @@ export default function AdminDashboard() {
   );
 }
 
-// --- HELPER COMPONENTS ---
 function StatCard({icon, label, value, color}) {
   const colors = { blue: "bg-blue-500/10 text-blue-500", green: "bg-green-500/10 text-green-500", purple: "bg-purple-500/10 text-purple-500" };
   return (
