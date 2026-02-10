@@ -201,7 +201,7 @@ export default function AdminDashboard() {
   return (
     <div className="p-4 md:p-10 max-w-7xl mx-auto min-h-screen bg-[#070a13] text-white font-sans selection:bg-green-500/30">
       
-      {/* --- PREMIUM HEADER --- */}
+      {/* --- HEADER --- */}
       <div className="mb-12 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-[#0f172a]/50 p-6 rounded-[2rem] border border-white/5 backdrop-blur-md">
         <div className="flex items-center gap-4">
           <div className="bg-gradient-to-br from-green-400 to-emerald-600 p-3 rounded-2xl shadow-lg shadow-green-500/20">
@@ -313,38 +313,39 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* --- RE-DESIGNED MODAL --- */}
+      {/* --- SMALL & CENTERED MODAL --- */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-300" onClick={handleOverlayClick}>
-          <div ref={modalRef} className="bg-[#0f172a] border border-white/10 w-full max-w-md rounded-[3rem] p-8 relative shadow-2xl shadow-green-500/5">
-            <button onClick={closeModal} className="absolute right-6 top-6 text-gray-500 hover:text-white transition-colors"><X size={24}/></button>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-6 animate-in fade-in duration-200" onClick={handleOverlayClick}>
+          {/* max-w-sm use kiya hai taake box kafi chota ho jaye */}
+          <div ref={modalRef} className="bg-[#0f172a] border border-white/10 w-full max-w-sm rounded-[2.5rem] p-6 relative shadow-2xl shadow-green-500/10 ring-1 ring-white/5">
+            <button onClick={closeModal} className="absolute right-5 top-5 text-gray-500 hover:text-white transition-colors"><X size={20}/></button>
             
-            <h2 className="text-2xl font-black mb-8 italic text-white uppercase tracking-tighter">
+            <h2 className="text-xl font-black mb-6 italic text-white uppercase tracking-tighter text-center">
               {editingUserId ? "Update Profile" : "New Account"}
             </h2>
             
-            <form onSubmit={handleSaveUser} className="space-y-6">
-              <div className="flex flex-col items-center justify-center border border-white/5 rounded-3xl p-6 bg-black/20 group">
-                <div className="relative w-24 h-24 rounded-[2rem] bg-black border border-white/10 overflow-hidden mb-4 group-hover:border-green-500/50 transition-all">
-                    {formData.profile_pic ? <img src={formData.profile_pic} className="w-full h-full object-cover" /> : <Upload className="m-auto mt-8 text-gray-700" size={28} />}
-                    {uploading && <div className="absolute inset-0 bg-black/80 flex items-center justify-center text-[10px] font-bold animate-pulse">SYNCING...</div>}
+            <form onSubmit={handleSaveUser} className="space-y-4">
+              <div className="flex flex-col items-center justify-center border border-white/5 rounded-2xl p-4 bg-black/20 group">
+                <div className="relative w-16 h-16 rounded-2xl bg-black border border-white/10 overflow-hidden mb-2 group-hover:border-green-500/50 transition-all">
+                    {formData.profile_pic ? <img src={formData.profile_pic} className="w-full h-full object-cover" /> : <Upload className="m-auto mt-4 text-gray-700" size={20} />}
+                    {uploading && <div className="absolute inset-0 bg-black/80 flex items-center justify-center text-[8px] font-bold animate-pulse">SYNC...</div>}
                 </div>
-                <label className="cursor-pointer text-[10px] font-black uppercase text-green-500 hover:text-green-400 bg-green-500/5 px-4 py-2 rounded-lg transition-all">
-                  {uploading ? "Uploading..." : "Change Picture"}
+                <label className="cursor-pointer text-[9px] font-black uppercase text-green-500 hover:text-green-400 bg-green-500/5 px-3 py-1.5 rounded-lg transition-all">
+                  {uploading ? "..." : "Change Image"}
                   <input type="file" className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e.target.files[0])} />
                 </label>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <InputField label="Name" value={formData.name} onChange={(v) => setFormData({...formData, name: v})} />
                 <InputField label="Email" type="email" value={formData.email} onChange={(v) => setFormData({...formData, email: v})} />
                 {!editingUserId && <InputField label="Password" type="password" value={formData.password} onChange={(v) => setFormData({...formData, password: v})} />}
 
                 <div>
-                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 block px-1">Access Role</label>
+                  <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1.5 block px-1">Access Role</label>
                   <select 
                       value={formData.role} 
-                      className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-green-500/50 text-sm appearance-none cursor-pointer transition-all"
+                      className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-green-500/50 text-xs appearance-none cursor-pointer transition-all"
                       onChange={(e) => setFormData({...formData, role: e.target.value})}
                   >
                       <option value="student">Student Account</option>
@@ -354,8 +355,8 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <button type="submit" disabled={uploading} className="w-full bg-white text-black hover:bg-green-500 py-5 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-[10px] transition-all mt-4 active:scale-95 shadow-xl shadow-white/5">
-                {editingUserId ? "Confirm Changes" : "Create Account"}
+              <button type="submit" disabled={uploading} className="w-full bg-green-500 text-black hover:bg-green-400 py-4 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all mt-2 active:scale-95 shadow-lg shadow-green-500/10">
+                {editingUserId ? "Confirm" : "Create Now"}
               </button>
             </form>
           </div>
@@ -385,10 +386,10 @@ function StatCard({icon, label, value, color, grad}) {
 function InputField({label, type="text", value, onChange}) {
   return (
     <div>
-      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 block px-1">{label}</label>
+      <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1.5 block px-1">{label}</label>
       <input 
         required type={type} value={value || ''} 
-        className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-green-500/50 text-sm transition-all placeholder:text-gray-700" 
+        className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-green-500/50 text-xs transition-all placeholder:text-gray-700" 
         onChange={(e) => onChange(e.target.value)} 
       />
     </div>
