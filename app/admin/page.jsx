@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Users, BookOpen, GraduationCap, Trash2, Edit, Search, X, Upload, FileUp } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import Cookies from 'js-cookie';
@@ -22,10 +22,11 @@ export default function AdminDashboard() {
     profile_pic: '' 
   });
 
-  // ✅ Fixed API URL for Lahore Portal (Railway Backend)
-// Aakhir se /api hata dena behtar hai agar aap nichay endpoints mein khud /api likh rahay hain
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://schoolportalbackend-production-e803.up.railway.app";
-  // --- HELPER: GET AUTH TOKEN (SSR Safe) ---
+  // Modal ref to handle outside click
+  const modalRef = useRef(null);
+
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://schoolportalbackend-production-e803.up.railway.app";
+
   const getAuthToken = useCallback(() => {
     const token = Cookies.get('token');
     if (token) return token;
@@ -35,17 +36,14 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://schoolportalbackend
     return null;
   }, []);
 
-  // --- 1. FETCH STATS ---
   const fetchStats = useCallback(async () => {
     try {
       const token = getAuthToken();
       if (!token) return;
-
       const res = await fetch(`${API_BASE}/admin/stats`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const result = await res.json();
-      
       if (result.success && result.data) {
         setStats({
           students: result.data.students || 0,
@@ -53,23 +51,18 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://schoolportalbackend
           courses: result.data.subjects || 0
         });
       }
-    } catch (err) { 
-        console.error("Stats fetch failed"); 
-    }
+    } catch (err) { console.error("Stats fetch failed"); }
   }, [API_BASE, getAuthToken]);
 
-  // --- 2. FETCH USERS (WITH SEARCH) ---
   const fetchUsers = useCallback(async (query = "") => {
     try {
       setLoading(true);
       const token = getAuthToken();
       if (!token) return;
-
       const res = await fetch(`${API_BASE}/admin/users?search=${query}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const result = await res.json();
-      
       setUsers(result.success && Array.isArray(result.data) ? result.data : []);
     } catch (err) {
       toast.error("Lahore Portal sync error!");
@@ -83,33 +76,26 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://schoolportalbackend
     fetchUsers();
   }, [fetchUsers, fetchStats]);
 
-  // --- 3. BULK UPLOAD HANDLER ---
   const handleBulkUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     if (!file.name.endsWith('.csv')) {
       toast.error("Sirf CSV file allow hai!");
       return;
     }
-
     const token = getAuthToken();
     const data = new FormData();
     data.append('file', file);
-
     try {
       setBulkLoading(true);
-      const loadingToast = toast.loading("Uploading students to Lahore Portal...");
-
+      const loadingToast = toast.loading("Uploading students...");
       const res = await fetch(`${API_BASE}/student/bulk-upload`, {
         method: 'POST',
         body: data,
         headers: { 'Authorization': `Bearer ${token}` }
       });
-
       const result = await res.json();
       toast.dismiss(loadingToast);
-
       if (res.ok) {
         toast.success(result.message || "Bulk upload successful!");
         fetchUsers();
@@ -117,21 +103,15 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://schoolportalbackend
       } else {
         toast.error(result.error || "Upload fail ho gaya.");
       }
-    } catch (err) {
-      toast.error("Network Error: Backend down hai.");
-    } finally {
-      setBulkLoading(false);
-      e.target.value = ''; 
-    }
+    } catch (err) { toast.error("Network Error: Backend down."); }
+    finally { setBulkLoading(false); e.target.value = ''; }
   };
 
-  // --- 4. IMAGE UPLOAD (CLOUDINARY) ---
   const handleImageUpload = async (file) => {
     if (!file) return;
     const token = getAuthToken();
     const data = new FormData();
     data.append("file", file); 
-
     try {
       setUploading(true);
       const res = await fetch(`${API_BASE}/admin/upload-image`, {
@@ -140,24 +120,18 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://schoolportalbackend
         headers: { 'Authorization': `Bearer ${token}` } 
       });
       const result = await res.json();
-
       if (result.success && result.url) {
         setFormData(prev => ({ ...prev, profile_pic: result.url }));
         toast.success("Profile picture set!");
       }
-    } catch (err) {
-      toast.error("Image upload fail!");
-    } finally {
-      setUploading(false);
-    }
+    } catch (err) { toast.error("Image upload fail!"); }
+    finally { setUploading(false); }
   };
 
-  // --- 5. SAVE / UPDATE USER ---
   const handleSaveUser = async (e) => {
     e.preventDefault();
     const method = editingUserId ? 'PUT' : 'POST';
     const url = editingUserId ? `${API_BASE}/admin/users/${editingUserId}` : `${API_BASE}/admin/users`;
-    
     try {
       const token = getAuthToken();
       const res = await fetch(url, {
@@ -168,9 +142,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://schoolportalbackend
         },
         body: JSON.stringify(formData)
       });
-      
       const result = await res.json();
-
       if (result.success) {
         toast.success(editingUserId ? "User updated!" : "User created!");
         closeModal();
@@ -182,9 +154,8 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://schoolportalbackend
     } catch (err) { toast.error("Server connection lost"); }
   };
 
-  // --- 6. DELETE USER ---
   const handleDelete = async (id) => {
-    if (!confirm("Kya aap waqai is user ko delete karna chahte hain?")) return;
+    if (!confirm("Kya aap waqai delete karna chahte hain?")) return;
     try {
       const token = getAuthToken();
       const res = await fetch(`${API_BASE}/admin/users/${id}`, { 
@@ -200,7 +171,6 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://schoolportalbackend
     } catch (err) { toast.error("Delete failed"); }
   };
 
-  // --- MODAL CONTROLS ---
   const openModal = (user = null) => {
     if (user) {
       setEditingUserId(user.id);
@@ -219,6 +189,13 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://schoolportalbackend
     setShowModal(false);
     setEditingUserId(null);
     setFormData({ name: '', email: '', role: 'student', password: '', profile_pic: '' });
+  };
+
+  // ✅ Function to handle outside click
+  const handleOverlayClick = (e) => {
+    if (modalRef.current && !modalRef.current.contains(e.target)) {
+      closeModal();
+    }
   };
 
   return (
@@ -319,20 +296,35 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://schoolportalbackend
         </div>
       </div>
 
-      {/* USER MODAL */}
+      {/* ✅ UPDATED MODAL WITH OUTSIDE CLICK AND PROPER SIZING */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#161d2f] border border-gray-800 w-full max-w-md rounded-2xl p-8 relative shadow-2xl">
-            <button onClick={closeModal} className="absolute right-4 top-4 text-gray-500 hover:text-white"><X size={22}/></button>
-            <h2 className="text-2xl font-black mb-6 italic text-green-500 uppercase">{editingUserId ? "Update Profile" : "New Portal Account"}</h2>
+        <div 
+          className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4 transition-all"
+          onClick={handleOverlayClick}
+        >
+          <div 
+            ref={modalRef}
+            className="bg-[#161d2f] border border-gray-800 w-full max-w-md rounded-3xl p-8 relative shadow-[0_0_50px_rgba(0,0,0,0.5)] animate-in fade-in zoom-in duration-200"
+          >
+            {/* ❌ Close Button */}
+            <button 
+              onClick={closeModal} 
+              className="absolute right-5 top-5 bg-gray-800/50 hover:bg-red-500/20 p-2 rounded-full text-gray-400 hover:text-red-500 transition-all border border-gray-700"
+            >
+              <X size={20}/>
+            </button>
+
+            <h2 className="text-2xl font-black mb-8 italic text-green-500 uppercase tracking-tight">
+              {editingUserId ? "Update Profile" : "New Portal Account"}
+            </h2>
             
-            <form onSubmit={handleSaveUser} className="space-y-4">
-              <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-800 rounded-xl p-4 bg-gray-900/30">
-                <div className="relative w-20 h-20 rounded-full bg-gray-800 overflow-hidden mb-2 border-2 border-green-500/30">
-                    {formData.profile_pic ? <img src={formData.profile_pic} className="w-full h-full object-cover" /> : <Upload className="m-auto mt-5 text-gray-700" />}
-                    {uploading && <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-[8px]">...</div>}
+            <form onSubmit={handleSaveUser} className="space-y-5">
+              <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-800 rounded-2xl p-6 bg-gray-900/30">
+                <div className="relative w-24 h-24 rounded-full bg-gray-800 overflow-hidden mb-3 border-4 border-green-500/20">
+                    {formData.profile_pic ? <img src={formData.profile_pic} className="w-full h-full object-cover" /> : <Upload className="m-auto mt-7 text-gray-700" />}
+                    {uploading && <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-xs">...</div>}
                 </div>
-                <label className="cursor-pointer text-[10px] font-black uppercase text-green-500 hover:underline">
+                <label className="cursor-pointer text-[11px] font-black uppercase text-green-500 hover:text-green-400 transition-colors">
                   {uploading ? "Uploading..." : "Change Picture"}
                   <input type="file" className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e.target.files[0])} />
                 </label>
@@ -346,10 +338,10 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://schoolportalbackend
               )}
 
               <div>
-                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1 block">User Role</label>
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5 block px-1">User Role</label>
                 <select 
                     value={formData.role} 
-                    className="w-full bg-gray-900 border border-gray-800 rounded-xl p-3 text-white outline-none focus:border-green-500 text-sm"
+                    className="w-full bg-gray-900 border border-gray-800 rounded-xl p-3.5 text-white outline-none focus:border-green-500 text-sm transition-all appearance-none cursor-pointer"
                     onChange={(e) => setFormData({...formData, role: e.target.value})}
                 >
                     <option value="student">Student</option>
@@ -358,7 +350,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://schoolportalbackend
                 </select>
               </div>
 
-              <button type="submit" disabled={uploading} className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-800 text-white py-4 rounded-xl font-black uppercase tracking-widest transition-all mt-4">
+              <button type="submit" disabled={uploading} className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-800 text-white py-4 rounded-2xl font-black uppercase tracking-widest transition-all shadow-lg hover:shadow-green-500/20 mt-4 active:scale-95">
                 {editingUserId ? "Save Changes" : "Create Account"}
               </button>
             </form>
@@ -385,12 +377,12 @@ function StatCard({icon, label, value, color}) {
 function InputField({label, type="text", value, onChange}) {
   return (
     <div>
-      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1 block">{label}</label>
+      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5 block px-1">{label}</label>
       <input 
         required 
         type={type} 
         value={value || ''} 
-        className="w-full bg-gray-900 border border-gray-800 rounded-xl p-3 text-white outline-none focus:border-green-500 text-sm transition-all" 
+        className="w-full bg-gray-900 border border-gray-800 rounded-xl p-3.5 text-white outline-none focus:border-green-500 text-sm transition-all focus:ring-1 focus:ring-green-500/30" 
         onChange={(e) => onChange(e.target.value)} 
       />
     </div>
