@@ -6,7 +6,7 @@ import { Clock, Send, ChevronRight, ChevronLeft } from 'lucide-react';
 import { safeApiCall } from '@/app/utils/api';
 
 export default function AttemptQuizPage() {
-  const { id } = useParams(); // Assignment ID
+  const { assignmentId } = useParams(); 
   const router = useRouter();
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
