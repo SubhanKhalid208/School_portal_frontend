@@ -7,8 +7,8 @@ import { safeApiCall } from '@/app/utils/api';
 
 export default function AttemptQuizPage() {
   const params = useParams();
-  const assignmentId = params?.assignmentId; // Sahi variable name
-  const studentId = params?.id; // Student ID from URL
+  const assignmentId = params?.assignmentId; 
+  const studentId = params?.id; 
   const router = useRouter();
   
   const [questions, setQuestions] = useState([]);
@@ -35,10 +35,17 @@ export default function AttemptQuizPage() {
 
   const loadQuestions = async () => {
     try {
-      // ✅ Fixed: using assignmentId instead of undefined 'id'
       const data = await safeApiCall(`/quiz/questions/${assignmentId}`);
-      if (data && Array.isArray(data)) {
-        setQuestions(data);
+      console.log("API Data received:", data); 
+
+      if (data) {
+        // ✅ Fix: Handling both Array and Single Object
+        if (Array.isArray(data)) {
+          setQuestions(data);
+        } else if (typeof data === 'object' && data !== null) {
+          // Agar backend sirf ek sawal bhej raha hai as object
+          setQuestions([data]);
+        }
       } else {
         toast.error("No questions found for this quiz");
       }
@@ -67,7 +74,6 @@ export default function AttemptQuizPage() {
     }
 
     try {
-      // ✅ Fixed: using assignmentId and proper body structure
       const res = await safeApiCall('/quiz/student/submit', {
         method: 'POST',
         body: JSON.stringify({ 
@@ -87,15 +93,21 @@ export default function AttemptQuizPage() {
 
   if (loading) return (
     <div className="min-h-screen bg-[#0a0f1c] flex items-center justify-center">
-      <div className="text-center font-black italic text-green-500 animate-pulse text-2xl">
+      <div className="text-center font-black italic text-green-500 animate-pulse text-2xl tracking-tighter">
         PREPARING QUIZ...
       </div>
     </div>
   );
 
   if (questions.length === 0) return (
-    <div className="min-h-screen bg-[#0a0f1c] text-white flex items-center justify-center">
-      No questions available.
+    <div className="min-h-screen bg-[#0a0f1c] text-white flex flex-col items-center justify-center gap-4">
+      <p className="text-xl font-bold opacity-50 italic">No questions available.</p>
+      <button 
+        onClick={() => router.back()}
+        className="text-green-500 underline font-black text-xs uppercase"
+      >
+        Go Back
+      </button>
     </div>
   );
 
@@ -121,7 +133,7 @@ export default function AttemptQuizPage() {
       <div className="max-w-4xl mx-auto bg-[#161d2f] p-10 rounded-[3rem] border border-white/5 shadow-inner relative overflow-hidden">
         <div className="flex justify-between items-center mb-8">
           <span className="text-gray-500 font-black text-xs uppercase italic">Question {currentIndex + 1} of {questions.length}</span>
-          <span className="bg-green-500/10 text-green-500 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter">Points: {currentQ?.marks}</span>
+          <span className="bg-green-500/10 text-green-500 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter">Points: {currentQ?.marks || 1}</span>
         </div>
 
         <h2 className="text-2xl font-bold mb-10 leading-tight">

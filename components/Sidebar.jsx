@@ -24,7 +24,6 @@ export default function Sidebar({ role, onCollapseChange }) {
 
   useEffect(() => {
     setIsMounted(true); 
-    // Cookies se ID nikalte waqt console karke check karein ke kya ID aa rahi hai
     const id = Cookies.get('userId');
     if (id) {
       setUserId(id);
@@ -83,6 +82,7 @@ export default function Sidebar({ role, onCollapseChange }) {
         isCollapsed ? 'w-20' : 'w-64'
       }`}
     >
+      {/* Toggle Button */}
       <button 
         onClick={() => setIsCollapsed(!isCollapsed)}
         className="absolute -right-3 top-10 bg-green-500 rounded-full p-1 text-black hover:scale-110 shadow-lg z-[60]"
@@ -90,6 +90,7 @@ export default function Sidebar({ role, onCollapseChange }) {
         {isCollapsed ? <ChevronRight size={16}/> : <ChevronLeft size={16}/>}
       </button>
 
+      {/* Logo Section */}
       <div className={`mb-10 px-2 ${isCollapsed ? 'text-center' : ''}`}>
         <h1 className={`font-bold text-green-500 transition-all ${isCollapsed ? 'text-sm' : 'text-xl italic font-black'}`}>
           {isCollapsed ? 'LP' : 'Lahore Portal'}
@@ -97,10 +98,12 @@ export default function Sidebar({ role, onCollapseChange }) {
         {!isCollapsed && <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">{role} Panel</p>}
       </div>
 
-      <nav className="flex-1 space-y-2 overflow-y-auto">
+      {/* Navigation Links */}
+      <nav className="flex-1 space-y-2 overflow-y-auto custom-scrollbar">
         {currentMenu.map((item) => {
-          // Active state logic - Improved for dynamic IDs
-          const isActive = pathname === item.path || (item.path !== '#' && pathname.startsWith(item.path));
+          // Improved Active State: Check if current path starts with item path
+          // Taake student dashboard ke andar mazeed pages par bhi link active rahe
+          const isActive = item.path !== '#' && (pathname === item.path || pathname.startsWith(item.path));
           const isDisabled = item.path === '#';
 
           return (
@@ -108,10 +111,14 @@ export default function Sidebar({ role, onCollapseChange }) {
               key={item.name} 
               href={item.path}
               className={`flex items-center space-x-3 p-3 rounded-xl transition-all ${
-                isActive ? 'bg-green-600 text-white shadow-lg shadow-green-900/20' : 'hover:bg-[#1f2937] text-gray-400'
+                isActive 
+                  ? 'bg-green-600 text-white shadow-lg shadow-green-900/20' 
+                  : 'hover:bg-[#1f2937] text-gray-400'
               } ${isCollapsed ? 'justify-center' : ''} ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
               onClick={(e) => {
-                if(isDisabled) e.preventDefault();
+                if(isDisabled) {
+                  e.preventDefault();
+                }
               }}
             >
               <div className={isActive ? 'text-white' : 'text-green-500/70'}>
@@ -123,7 +130,11 @@ export default function Sidebar({ role, onCollapseChange }) {
         })}
       </nav>
 
-      <button onClick={onLogout} className={`flex items-center space-x-3 p-3 text-red-400 hover:bg-red-500/10 rounded-xl transition-colors mt-auto w-full font-bold text-sm ${isCollapsed ? 'justify-center' : ''}`}>
+      {/* Logout Button */}
+      <button 
+        onClick={onLogout} 
+        className={`flex items-center space-x-3 p-3 text-red-400 hover:bg-red-500/10 rounded-xl transition-colors mt-auto w-full font-bold text-sm ${isCollapsed ? 'justify-center' : ''}`}
+      >
         <LogOut size={20}/>
         {!isCollapsed && <span>Logout</span>}
       </button>
