@@ -24,8 +24,11 @@ export default function Sidebar({ role, onCollapseChange }) {
 
   useEffect(() => {
     setIsMounted(true); 
+    // Cookies se ID nikalte waqt console karke check karein ke kya ID aa rahi hai
     const id = Cookies.get('userId');
-    if (id) setUserId(id);
+    if (id) {
+      setUserId(id);
+    }
   }, []);
 
   useEffect(() => {
@@ -51,7 +54,7 @@ export default function Sidebar({ role, onCollapseChange }) {
       },
       { 
         name: 'My Quizzes', 
-        // ✅ FIXED: Path ko folder structure ke mutabiq sahi kiya
+        // ✅ EXACT PATH: Aapke folder structure [id] ke mutabiq
         path: userId ? `/dashboard/student/${userId}/quizzes` : '#', 
         icon: <BookOpenCheck size={20}/> 
       },
@@ -67,7 +70,7 @@ export default function Sidebar({ role, onCollapseChange }) {
 
   const onLogout = () => {
     Cookies.remove('userId');
-    Cookies.remove('token'); // Token bhi lazmi remove karein
+    Cookies.remove('token'); 
     Cookies.remove('role');
     localStorage.clear();
     window.location.href = '/login';
@@ -97,7 +100,7 @@ export default function Sidebar({ role, onCollapseChange }) {
 
       <nav className="flex-1 space-y-2 overflow-y-auto custom-scrollbar">
         {currentMenu.map((item) => {
-          // Path matching for active state
+          // Active state logic
           const isActive = pathname === item.path;
           const isDisabled = item.path === '#';
 
@@ -108,7 +111,9 @@ export default function Sidebar({ role, onCollapseChange }) {
               className={`flex items-center space-x-3 p-3 rounded-xl transition-all ${
                 isActive ? 'bg-green-600 text-white shadow-lg shadow-green-900/20' : 'hover:bg-[#1f2937] text-gray-400'
               } ${isCollapsed ? 'justify-center' : ''} ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-              onClick={(e) => isDisabled && e.preventDefault()}
+              onClick={(e) => {
+                if(isDisabled) e.preventDefault();
+              }}
             >
               <div className={isActive ? 'text-white' : 'text-green-500/70'}>
                 {item.icon}
