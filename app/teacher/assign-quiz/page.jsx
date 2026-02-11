@@ -18,18 +18,22 @@ export default function AssignQuizPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // 1. Fetch Quizzes (Backend fix ke baad res.data mein array aayega)
-      const quizRes = await safeApiCall('/quiz/all'); 
-      if (quizRes.success) {
-        setQuizzes(quizRes.data || []);
+      // ✅ FIX: URL updated to match backend route
+      const quizRes = await safeApiCall('/quiz/teacher/all-quizzes'); 
+      
+      // Agar backend direct array bhej raha hai ya {data: []} mein
+      if (quizRes) {
+        const quizData = Array.isArray(quizRes) ? quizRes : (quizRes.data || []);
+        setQuizzes(quizData);
       } else {
         toast.error("Quizzes load nahi ho sakein");
       }
 
       // 2. Fetch Students
       const userRes = await safeApiCall('/auth/users?role=student');
-      if (userRes.success) {
-        setStudents(userRes.data || []);
+      if (userRes && userRes.success !== false) {
+        const studentData = Array.isArray(userRes) ? userRes : (userRes.data || []);
+        setStudents(studentData);
       }
     } catch (err) {
       toast.error("Data load karne mein masla hua");
@@ -46,7 +50,6 @@ export default function AssignQuizPage() {
     }
 
     try {
-      // Backend ko correct payload bhejna
       const res = await safeApiCall('/quiz/teacher/assign', {
         method: 'POST',
         body: JSON.stringify({
@@ -55,10 +58,10 @@ export default function AssignQuizPage() {
         }),
       });
 
-      if (res.success) {
-        toast.success("Quiz assign kar diya gaya!");
+      if (res && res.success !== false) {
+        toast.success("✅ Quiz successfully assign ho gaya!");
       } else {
-        toast.error(res.error || "Assign karne mein masla hua");
+        toast.error(res?.message || "Assign karne mein masla hua");
       }
     } catch (err) {
       toast.error("Network error: Assign nahi ho saka");
@@ -73,21 +76,23 @@ export default function AssignQuizPage() {
             <UserCheck className="text-green-500" /> Assign Quiz
           </h1>
           <p className="text-gray-500 text-[10px] mt-1 uppercase font-bold tracking-widest">
-            Select a quiz and assign it to students in Lahore
+            Lahore Portal: Select a quiz and assign it to students
           </p>
         </div>
 
         {/* Quiz Selector */}
-        <div className="bg-[#161d2f] p-2 rounded-2xl border border-white/5 flex items-center gap-3">
+        <div className="bg-[#161d2f] p-2 rounded-2xl border border-white/5 flex items-center gap-3 shadow-xl">
           <BookOpen size={18} className="ml-2 text-green-500" />
           <select 
-            className="bg-transparent outline-none text-sm font-bold pr-4 py-2 text-white"
+            className="bg-transparent outline-none text-sm font-bold pr-4 py-2 text-white cursor-pointer"
             value={selectedQuiz}
             onChange={(e) => setSelectedQuiz(e.target.value)}
           >
             <option value="" className="bg-[#161d2f]">Select Quiz to Assign</option>
             {quizzes.map(q => (
-              <option key={q.id} value={q.id} className="bg-[#161d2f]">{q.title}</option>
+              <option key={q.id} value={q.id} className="bg-[#161d2f] text-white">
+                {q.title}
+              </option>
             ))}
           </select>
         </div>
@@ -108,7 +113,9 @@ export default function AssignQuizPage() {
       {/* Students List Table */}
       <div className="bg-[#161d2f] rounded-[2rem] border border-white/5 overflow-hidden shadow-2xl min-h-[300px]">
         {loading ? (
-          <div className="flex items-center justify-center h-48 font-bold italic animate-pulse">Loading Students...</div>
+          <div className="flex items-center justify-center h-48 font-black italic animate-pulse text-green-500 uppercase tracking-widest">
+            Fetching Students...
+          </div>
         ) : (
           <table className="w-full text-left border-collapse">
             <thead>
@@ -120,7 +127,7 @@ export default function AssignQuizPage() {
             </thead>
             <tbody className="divide-y divide-white/5">
               {students
-                .filter(s => s.name?.toLowerCase().includes(search.toLowerCase()))
+                .filter(s => s.name?.toLowerCase().includes(search.toLowerCase()) || s.email?.toLowerCase().includes(search.toLowerCase()))
                 .map((student) => (
                   <tr key={student.id} className="hover:bg-white/[0.02] transition-colors group">
                     <td className="p-6">
@@ -128,14 +135,14 @@ export default function AssignQuizPage() {
                         <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-green-500 to-emerald-700 flex items-center justify-center font-black text-black">
                           {student.name ? student.name[0].toUpperCase() : '?'}
                         </div>
-                        <span className="font-bold">{student.name}</span>
+                        <span className="font-bold group-hover:text-green-400 transition-colors">{student.name}</span>
                       </div>
                     </td>
-                    <td className="p-6 text-gray-400 text-sm font-medium">{student.email}</td>
+                    <td className="p-6 text-gray-400 text-sm font-medium italic">{student.email}</td>
                     <td className="p-6 text-right">
                       <button 
                         onClick={() => handleAssign(student.id)}
-                        className="bg-green-500 hover:bg-green-600 text-black px-6 py-2 rounded-xl font-black text-xs uppercase tracking-wider transition-all shadow-lg active:scale-95"
+                        className="bg-green-500 hover:bg-green-400 text-black px-6 py-2 rounded-xl font-black text-xs uppercase tracking-wider transition-all shadow-lg active:scale-95 shadow-green-500/10"
                       >
                         Assign Now
                       </button>
@@ -144,6 +151,11 @@ export default function AssignQuizPage() {
                 ))}
             </tbody>
           </table>
+        )}
+        {!loading && students.length === 0 && (
+          <div className="p-20 text-center text-gray-500 uppercase font-black italic text-xs">
+            No students found in Lahore database.
+          </div>
         )}
       </div>
     </div>
