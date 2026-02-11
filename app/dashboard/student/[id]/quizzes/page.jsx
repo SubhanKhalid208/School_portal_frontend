@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { ClipboardList, Play, CheckCircle, Clock } from 'lucide-react';
+import { ClipboardList, Play, CheckCircle, Clock, Award } from 'lucide-react';
 import { safeApiCall } from '@/app/utils/api';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -9,7 +9,7 @@ import { useParams } from 'next/navigation';
 export default function StudentQuizzesPage() {
   const [quizzes, setQuizzes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const params = useParams(); // URL se student ID lene ke liye
+  const params = useParams(); 
 
   useEffect(() => {
     fetchQuizzes();
@@ -18,13 +18,15 @@ export default function StudentQuizzesPage() {
   const fetchQuizzes = async () => {
     try {
       setLoading(true);
-      // ✅ API call ke baad .data check karna zaroori hai
+      // Lahore Portal API Call
       const res = await safeApiCall('/quiz/student/my-quizzes');
       
-      if (res.success) {
-        setQuizzes(res.data || []);
+      // ✅ Check both res.success and direct array
+      if (res && (res.success || Array.isArray(res))) {
+        const data = Array.isArray(res) ? res : res.data;
+        setQuizzes(data || []);
       } else {
-        toast.error(res.error || "Quizzes load nahi ho sakein");
+        toast.error(res?.error || "Quizzes load nahi ho sakein");
       }
     } catch (err) {
       toast.error("Network error: Quizzes load karne mein masla hua");
@@ -57,12 +59,22 @@ export default function StudentQuizzesPage() {
           </div>
         ) : (
           quizzes.map((quiz) => (
-            <div key={quiz.assignment_id} className="bg-[#161d2f] p-6 rounded-[2.5rem] border border-white/5 shadow-xl hover:border-green-500/30 transition-all group">
+            <div key={quiz.assignment_id} className="bg-[#161d2f] p-6 rounded-[2.5rem] border border-white/5 shadow-xl hover:border-green-500/30 transition-all group relative overflow-hidden">
+              
+              {/* ✅ Marks Badge: Agar quiz complete hai to score dikhao */}
+              {quiz.is_completed && (
+                <div className="absolute top-0 right-0 bg-green-500 text-black px-4 py-1 rounded-bl-2xl font-black text-[10px] flex items-center gap-1 shadow-lg">
+                  <Award size={12} /> SCORE: {quiz.score || 0} / {quiz.total_marks}
+                </div>
+              )}
+
               <div className="flex justify-between items-start mb-4">
                 <div className={`p-2 rounded-xl ${quiz.is_completed ? 'bg-green-500/10 text-green-500' : 'bg-yellow-500/10 text-yellow-500'}`}>
                   {quiz.is_completed ? <CheckCircle size={20} /> : <Clock size={20} />}
                 </div>
-                <span className="text-[10px] font-black uppercase text-gray-600">Marks: {quiz.total_marks}</span>
+                {!quiz.is_completed && (
+                  <span className="text-[10px] font-black uppercase text-gray-600">Total Marks: {quiz.total_marks}</span>
+                )}
               </div>
 
               <h3 className="text-xl font-bold mb-2 group-hover:text-green-500 transition-colors">{quiz.title}</h3>
@@ -74,11 +86,16 @@ export default function StudentQuizzesPage() {
               </div>
 
               {quiz.is_completed ? (
-                <button disabled className="w-full bg-white/5 text-gray-500 p-4 rounded-2xl font-black uppercase text-[10px] cursor-not-allowed">
-                  Completed
-                </button>
+                <div className="space-y-3">
+                  <div className="bg-white/5 p-4 rounded-2xl flex justify-between items-center border border-white/5">
+                     <span className="text-[10px] font-black text-gray-500 uppercase tracking-tighter">Result Status</span>
+                     <span className="text-xs font-bold text-green-500 uppercase">Passed</span>
+                  </div>
+                  <button disabled className="w-full bg-white/5 text-gray-500 p-4 rounded-2xl font-black uppercase text-[10px] cursor-not-allowed border border-white/5">
+                    COMPLETED
+                  </button>
+                </div>
               ) : (
-                /* ✅ Link ko aapke folder structure se match kiya: /dashboard/student/[id]/quizzes/attempt/[assignmentId] */
                 <Link 
                   href={`/dashboard/student/${params.id}/quizzes/attempt/${quiz.assignment_id}`} 
                   className="block"
