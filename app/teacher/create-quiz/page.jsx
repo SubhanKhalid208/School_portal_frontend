@@ -1,16 +1,14 @@
 'use client'
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { PlusCircle, Trash2, Save, HelpCircle, LayoutList } from 'lucide-react';
+import { PlusCircle, Trash2, Save, LayoutList } from 'lucide-react';
 import { safeApiCall } from '@/app/utils/api';
 
 export default function CreateQuizPage() {
   const [quizInfo, setQuizInfo] = useState({
     title: '',
     description: '',
-    subject_id: '',
-    passing_marks: 50,
-    total_marks: 100
+    passing_marks: 5, // Default passing marks
   });
 
   const [questions, setQuestions] = useState([
@@ -19,18 +17,19 @@ export default function CreateQuizPage() {
 
   const [loading, setLoading] = useState(false);
 
-  // Naya sawal add karne ka function
   const addQuestion = () => {
     setQuestions([...questions, { text: '', a: '', b: '', c: '', d: '', correct: 'A', marks: 1 }]);
   };
 
-  // Sawal delete karne ka function
   const removeQuestion = (index) => {
-    const updatedQuestions = questions.filter((_, i) => i !== index);
-    setQuestions(updatedQuestions);
+    if (questions.length > 1) {
+      const updatedQuestions = questions.filter((_, i) => i !== index);
+      setQuestions(updatedQuestions);
+    } else {
+      toast.error("At least one question is required!");
+    }
   };
 
-  // Input change handle karna
   const handleQuestionChange = (index, field, value) => {
     const updatedQuestions = [...questions];
     updatedQuestions[index][field] = value;
@@ -39,26 +38,48 @@ export default function CreateQuizPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!quizInfo.title || questions.some(q => !q.text)) {
-      toast.error("Please fill all details and questions!");
+    
+    // Validation
+    if (!quizInfo.title || questions.some(q => !q.text || !q.a || !q.b)) {
+      toast.error("Please fill all titles, questions, and at least two options!");
       return;
     }
 
     try {
       setLoading(true);
+
+      // ✅ DATA MAPPING: Frontend keys ko Backend keys se match karna
+      const formattedQuestions = questions.map(q => ({
+        question_text: q.text,       // 'text' becomes 'question_text'
+        option_a: q.a,
+        option_b: q.b,
+        option_c: q.c,
+        option_d: q.d,
+        correct_option: q.correct,   // 'correct' becomes 'correct_option'
+        marks: q.marks || 1
+      }));
+
+      const payload = {
+        ...quizInfo,
+        questions: formattedQuestions
+      };
+
       const res = await safeApiCall('/quiz/teacher/create', {
         method: 'POST',
-        body: JSON.stringify({ ...quizInfo, questions }),
+        body: JSON.stringify(payload),
       });
 
       if (res.success) {
         toast.success("Quiz created successfully!");
         // Reset form
-        setQuizInfo({ title: '', description: '', subject_id: '', passing_marks: 50, total_marks: 100 });
+        setQuizInfo({ title: '', description: '', passing_marks: 5 });
         setQuestions([{ text: '', a: '', b: '', c: '', d: '', correct: 'A', marks: 1 }]);
+      } else {
+        toast.error(res.error || "Failed to save quiz");
       }
     } catch (err) {
-      toast.error("Error creating quiz");
+      toast.error("Something went wrong!");
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -72,7 +93,7 @@ export default function CreateQuizPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-8">
-        {/* Quiz Info Section */}
+        {/* Quiz Info */}
         <div className="bg-[#161d2f] p-6 rounded-[2rem] border border-white/5 shadow-xl">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="flex flex-col gap-2">
@@ -80,7 +101,7 @@ export default function CreateQuizPage() {
               <input 
                 type="text" 
                 className="bg-[#0a0f1c] border border-white/5 p-3 rounded-xl focus:border-green-500 outline-none transition-all"
-                placeholder="e.g. Midterm Mathematics"
+                placeholder="e.g. Mathematics Basic"
                 value={quizInfo.title}
                 onChange={(e) => setQuizInfo({...quizInfo, title: e.target.value})}
               />
