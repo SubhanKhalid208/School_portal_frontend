@@ -1,7 +1,9 @@
 /**
  * Centralized API Helper for Lahore Portal
  * Optimized for Railway Production and Vercel
+ * Includes Automatic Token Injection
  */
+import Cookies from 'js-cookie';
 
 const getBaseUrl = () => {
   // 1. Get base from env or default to localhost
@@ -29,27 +31,35 @@ export const getApiUrl = (endpoint) => {
   const endpointHasApi = cleanEndpoint.toLowerCase().startsWith('/api/');
 
   if (baseHasApi && endpointHasApi) {
-    // Agar dono jagah /api hai, to endpoint wala remove karein
     return `${base}${cleanEndpoint.substring(4)}`; 
   }
 
   if (!baseHasApi && !endpointHasApi) {
-    // Agar kisi jagah bhi nahi hai, to manually add karein
     return `${base}/api${cleanEndpoint}`;
   }
 
-  // 3. Normal case (ek jagah /api maujood hai)
   return `${base}${cleanEndpoint}`;
 };
 
 /**
- * Fetch wrapper with automatic retry logic and cross-domain support
+ * Fetch wrapper with automatic retry logic, cross-domain support,
+ * and AUTOMATIC TOKEN INJECTION.
  */
 export const fetchWithRetry = async (url, options = {}, retries = 1) => {
+  // 🔑 IMPORTANT: Get token from cookies
+  const token = Cookies.get('token'); 
+
+  // Merge headers with Authorization token
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` }),
+    ...options.headers, // Allow overriding headers if needed
+  };
+
   try {
     const response = await fetch(url, {
       ...options,
-      // Production mein session cookies ke liye 'include' barkarar rakha hai
+      headers, // Added injected headers
       credentials: options.credentials || 'include',
       cache: 'no-store' 
     });
@@ -80,7 +90,6 @@ export const fetchWithRetry = async (url, options = {}, retries = 1) => {
 export const safeApiCall = async (endpoint, options = {}) => {
   try {
     const url = getApiUrl(endpoint);
-    // Debugging line taake aap console mein sahi URL dekh sakein
     console.log("🌐 Lahore Portal Request:", url); 
     
     const response = await fetchWithRetry(url, options);
@@ -91,7 +100,6 @@ export const safeApiCall = async (endpoint, options = {}) => {
     if (contentType && contentType.includes('application/json')) {
       data = await response.json();
     } else {
-      // Non-JSON response (like 404 HTML) ko debug karne ke liye
       const errorBody = await response.text();
       console.error("⚠️ Non-JSON Response received:", errorBody);
     }
