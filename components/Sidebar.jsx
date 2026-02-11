@@ -51,7 +51,8 @@ export default function Sidebar({ role, onCollapseChange }) {
       },
       { 
         name: 'My Quizzes', 
-        path: '/student/quizzes', // Student ki assigned quizzes ka list page
+        // ✅ FIXED: Path ko folder structure ke mutabiq sahi kiya
+        path: userId ? `/dashboard/student/${userId}/quizzes` : '#', 
         icon: <BookOpenCheck size={20}/> 
       },
       { 
@@ -66,6 +67,7 @@ export default function Sidebar({ role, onCollapseChange }) {
 
   const onLogout = () => {
     Cookies.remove('userId');
+    Cookies.remove('token'); // Token bhi lazmi remove karein
     Cookies.remove('role');
     localStorage.clear();
     window.location.href = '/login';
@@ -95,6 +97,7 @@ export default function Sidebar({ role, onCollapseChange }) {
 
       <nav className="flex-1 space-y-2 overflow-y-auto custom-scrollbar">
         {currentMenu.map((item) => {
+          // Path matching for active state
           const isActive = pathname === item.path;
           const isDisabled = item.path === '#';
 
