@@ -6,22 +6,27 @@ import { Clock, Send, ChevronRight, ChevronLeft } from 'lucide-react';
 import { safeApiCall } from '@/app/utils/api';
 
 export default function AttemptQuizPage() {
-  const { assignmentId } = useParams(); 
+  const params = useParams();
+  const assignmentId = params?.assignmentId; // Sahi variable name
+  const studentId = params?.id; // Student ID from URL
   const router = useRouter();
+  
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [answers, setAnswers] = useState({}); // {question_id: 'A'}
-  const [timeLeft, setTimeLeft] = useState(600); // 10 minutes default
+  const [answers, setAnswers] = useState({}); 
+  const [timeLeft, setTimeLeft] = useState(600); 
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadQuestions();
-  }, []);
+    if (assignmentId) {
+      loadQuestions();
+    }
+  }, [assignmentId]);
 
   // Timer Logic
   useEffect(() => {
     if (timeLeft <= 0) {
-      handleSubmit(); // Timer khatam hone par auto-submit
+      handleSubmit(); 
       return;
     }
     const timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
@@ -30,11 +35,17 @@ export default function AttemptQuizPage() {
 
   const loadQuestions = async () => {
     try {
-      const data = await safeApiCall(`/quiz/questions/${id}`);
-      setQuestions(data);
+      // ✅ Fixed: using assignmentId instead of undefined 'id'
+      const data = await safeApiCall(`/quiz/questions/${assignmentId}`);
+      if (data && Array.isArray(data)) {
+        setQuestions(data);
+      } else {
+        toast.error("No questions found for this quiz");
+      }
     } catch (err) {
+      console.error("Load Error:", err);
       toast.error("Questions load nahi ho sakay");
-      router.push('/student/quizzes');
+      router.push(`/dashboard/student/${studentId}/quizzes`);
     } finally {
       setLoading(false);
     }
@@ -50,22 +61,43 @@ export default function AttemptQuizPage() {
       selected: answers[qId]
     }));
 
+    if (formattedAnswers.length === 0) {
+      toast.error("Kam az kam aik sawal ka jawab den!");
+      return;
+    }
+
     try {
+      // ✅ Fixed: using assignmentId and proper body structure
       const res = await safeApiCall('/quiz/student/submit', {
         method: 'POST',
-        body: JSON.stringify({ assignment_id: id, answers: formattedAnswers }),
+        body: JSON.stringify({ 
+          assignment_id: parseInt(assignmentId), 
+          answers: formattedAnswers 
+        }),
       });
 
-      if (res.success) {
-        toast.success(`Quiz Submitted! Score: ${res.score}`);
-        router.push('/student/quizzes');
+      if (res) {
+        toast.success(`Quiz Submitted! Score: ${res.score || 0}`);
+        router.push(`/dashboard/student/${studentId}/quizzes`);
       }
     } catch (err) {
       toast.error("Submission failed!");
     }
   };
 
-  if (loading) return <div className="p-20 text-center font-black italic">Preparing Quiz...</div>;
+  if (loading) return (
+    <div className="min-h-screen bg-[#0a0f1c] flex items-center justify-center">
+      <div className="text-center font-black italic text-green-500 animate-pulse text-2xl">
+        PREPARING QUIZ...
+      </div>
+    </div>
+  );
+
+  if (questions.length === 0) return (
+    <div className="min-h-screen bg-[#0a0f1c] text-white flex items-center justify-center">
+      No questions available.
+    </div>
+  );
 
   const currentQ = questions[currentIndex];
 
@@ -119,7 +151,7 @@ export default function AttemptQuizPage() {
           ))}
         </div>
 
-        {/* Navigation Buttons */}
+        {/* Navigation */}
         <div className="flex justify-between items-center border-t border-white/5 pt-8">
           <button 
             disabled={currentIndex === 0}

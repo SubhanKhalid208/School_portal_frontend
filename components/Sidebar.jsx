@@ -35,6 +35,14 @@ export default function Sidebar({ role, onCollapseChange }) {
     if (onCollapseChange) onCollapseChange(isCollapsed);
   }, [isCollapsed, onCollapseChange]);
 
+  const onLogout = () => {
+    Cookies.remove('userId');
+    Cookies.remove('token'); 
+    Cookies.remove('role');
+    localStorage.clear();
+    window.location.href = '/login';
+  };
+
   const menuItems = {
     admin: [
       { name: 'Dashboard', path: '/admin', icon: <LayoutDashboard size={20}/> },
@@ -54,7 +62,6 @@ export default function Sidebar({ role, onCollapseChange }) {
       },
       { 
         name: 'My Quizzes', 
-        // ✅ EXACT PATH: Aapke folder structure [id] ke mutabiq
         path: userId ? `/dashboard/student/${userId}/quizzes` : '#', 
         icon: <BookOpenCheck size={20}/> 
       },
@@ -67,14 +74,6 @@ export default function Sidebar({ role, onCollapseChange }) {
   };
 
   const currentMenu = menuItems[role] || [];
-
-  const onLogout = () => {
-    Cookies.remove('userId');
-    Cookies.remove('token'); 
-    Cookies.remove('role');
-    localStorage.clear();
-    window.location.href = '/login';
-  };
 
   if (!isMounted) return <div className="w-20 h-screen bg-[#161d2f]"></div>;
 
@@ -98,10 +97,10 @@ export default function Sidebar({ role, onCollapseChange }) {
         {!isCollapsed && <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">{role} Panel</p>}
       </div>
 
-      <nav className="flex-1 space-y-2 overflow-y-auto custom-scrollbar">
+      <nav className="flex-1 space-y-2 overflow-y-auto">
         {currentMenu.map((item) => {
-          // Active state logic
-          const isActive = pathname === item.path;
+          // Active state logic - Improved for dynamic IDs
+          const isActive = pathname === item.path || (item.path !== '#' && pathname.startsWith(item.path));
           const isDisabled = item.path === '#';
 
           return (
