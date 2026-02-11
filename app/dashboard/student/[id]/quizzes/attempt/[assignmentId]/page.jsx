@@ -35,24 +35,25 @@ export default function AttemptQuizPage() {
   const loadQuestions = async () => {
     try {
       const data = await safeApiCall(`/quiz/questions/${assignmentId}`);
-      console.log("Subhan, API Response:", data); 
+      console.log("Subhan, API Response Check:", data); 
 
       if (data) {
-        // ✅ CRITICAL FIX: Backend se agar single object aaye to use array mein convert karo
-        const questionsArray = Array.isArray(data) ? data : [data];
+        // ✅ IS LOGIC KO DHAYAN SE DEKHEIN:
+        // Agar data array hai to wese hi use karo, agar object hai to array mein wrap karo
+        let finalData = Array.isArray(data) ? data : [data];
         
-        // Filter out any null values just in case
-        const validQuestions = questionsArray.filter(q => q && q.id);
-        
-        if (validQuestions.length > 0) {
-          setQuestions(validQuestions);
+        // Extra safety: Filter empty objects
+        finalData = finalData.filter(q => q && (q.id || q.question_text));
+
+        if (finalData.length > 0) {
+          setQuestions(finalData);
         } else {
-          toast.error("No valid questions found");
+          setQuestions([]);
         }
       }
     } catch (err) {
       console.error("Load Error:", err);
-      toast.error("Failed to load questions");
+      toast.error("Questions load nahi ho sakay");
     } finally {
       setLoading(false);
     }
@@ -69,7 +70,7 @@ export default function AttemptQuizPage() {
     }));
 
     if (formattedAnswers.length === 0 && timeLeft > 0) {
-      toast.error("Please select at least one answer!");
+      toast.error("Kam az kam aik sawal select karein!");
       return;
     }
 
@@ -87,22 +88,24 @@ export default function AttemptQuizPage() {
         router.push(`/dashboard/student/${studentId}/quizzes`);
       }
     } catch (err) {
-      toast.error("Submission failed!");
+      toast.error("Submission fail ho gayi!");
     }
   };
 
   if (loading) return (
     <div className="min-h-screen bg-[#0a0f1c] flex items-center justify-center">
       <div className="text-green-500 animate-pulse text-2xl font-black italic tracking-tighter">
-        PREPARING YOUR QUIZ...
+        PREPARING QUIZ...
       </div>
     </div>
   );
 
-  if (questions.length === 0) return (
+  // ✅ Agar questions array khali hai to ye dikhayega
+  if (!questions || questions.length === 0) return (
     <div className="min-h-screen bg-[#0a0f1c] text-white flex flex-col items-center justify-center gap-4">
-      <p className="opacity-50">No questions found.</p>
-      <button onClick={() => router.back()} className="text-green-400 underline">Go Back</button>
+      <p className="text-xl font-bold opacity-50">No questions found in data.</p>
+      <button onClick={() => loadQuestions()} className="bg-green-500 text-black px-4 py-2 rounded-lg font-bold">Retry</button>
+      <button onClick={() => router.back()} className="text-green-500 underline text-xs">Go Back</button>
     </div>
   );
 
@@ -112,7 +115,7 @@ export default function AttemptQuizPage() {
     <div className="min-h-screen bg-[#0a0f1c] text-white p-4 md:p-10">
       <div className="max-w-4xl mx-auto flex justify-between items-center mb-8 bg-[#161d2f] p-4 rounded-2xl border border-white/5">
         <div className="flex items-center gap-2">
-          <div className="w-2 h-2 bg-green-500 rounded-full animate-ping" />
+          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
           <span className="font-black uppercase text-[10px] tracking-widest">Lahore Portal | Live Quiz</span>
         </div>
         <div className="flex items-center gap-3 bg-red-500/10 text-red-500 px-4 py-2 rounded-xl border border-red-500/20">
@@ -125,45 +128,47 @@ export default function AttemptQuizPage() {
 
       <div className="max-w-4xl mx-auto bg-[#161d2f] p-6 md:p-12 rounded-[2.5rem] border border-white/5 shadow-2xl">
         <div className="flex justify-between items-center mb-8">
-          <span className="text-gray-500 font-bold text-[10px] uppercase">Question {currentIndex + 1} of {questions.length}</span>
-          <span className="bg-green-500/20 text-green-400 px-3 py-1 rounded-lg text-[10px] font-black">MARKS: {currentQ?.marks || 1}</span>
+          <span className="text-gray-500 font-bold text-[10px] uppercase italic">Question {currentIndex + 1} of {questions.length}</span>
+          <span className="bg-green-500/10 text-green-500 px-3 py-1 rounded-full text-[10px] font-black uppercase">Points: {currentQ?.marks || 1}</span>
         </div>
 
-        <h2 className="text-2xl md:text-3xl font-bold mb-10 leading-tight">
-          {currentQ?.question_text}
+        <h2 className="text-xl md:text-2xl font-bold mb-10 leading-tight">
+          {currentQ?.question_text || "Question text not available"}
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
           {['a', 'b', 'c', 'd'].map((opt) => {
-            const val = currentQ[`option_${opt}`];
-            if (!val) return null; // Skip if option is empty
+            const optionKey = `option_${opt}`;
+            const optionValue = currentQ[optionKey];
+            
+            if (!optionValue) return null; // Agar option backend se khali aaye to na dikhao
 
             return (
               <button
                 key={opt}
                 onClick={() => handleOptionSelect(currentQ.id, opt.toUpperCase())}
-                className={`p-6 rounded-2xl border transition-all text-left flex items-center gap-4 ${
+                className={`p-6 rounded-2xl border transition-all text-left flex items-center gap-4 group ${
                   answers[currentQ.id] === opt.toUpperCase() 
-                  ? 'border-green-500 bg-green-500/10 shadow-[0_0_20px_rgba(34,197,94,0.1)]' 
+                  ? 'border-green-500 bg-green-500/20' 
                   : 'border-white/5 bg-[#0a0f1c] hover:border-white/10'
                 }`}
               >
-                <span className={`w-10 h-10 rounded-xl flex items-center justify-center font-black ${
+                <span className={`w-10 h-10 min-w-[40px] rounded-xl flex items-center justify-center font-black transition-all ${
                   answers[currentQ.id] === opt.toUpperCase() ? 'bg-green-500 text-black' : 'bg-white/5 text-gray-500'
                 }`}>
                   {opt.toUpperCase()}
                 </span>
-                <span className="text-lg font-semibold">{val}</span>
+                <span className="font-bold text-gray-200 text-lg">{optionValue}</span>
               </button>
             );
           })}
         </div>
 
-        <div className="flex justify-between items-center border-t border-white/5 pt-8">
+        <div className="flex justify-between items-center border-t border-white/5 pt-8 mt-4">
           <button 
             disabled={currentIndex === 0}
             onClick={() => setCurrentIndex(prev => prev - 1)}
-            className="flex items-center gap-2 text-gray-500 hover:text-white disabled:opacity-20 font-black uppercase text-[10px]"
+            className="flex items-center gap-2 text-gray-500 hover:text-white disabled:opacity-20 transition-all font-black uppercase text-[10px]"
           >
             <ChevronLeft size={20} /> Previous
           </button>
@@ -171,16 +176,16 @@ export default function AttemptQuizPage() {
           {currentIndex === questions.length - 1 ? (
             <button 
               onClick={handleSubmit}
-              className="bg-green-500 hover:bg-green-600 text-black px-10 py-4 rounded-2xl font-black uppercase text-xs flex items-center gap-2 shadow-xl"
+              className="bg-green-500 hover:bg-green-600 text-black px-10 py-4 rounded-2xl font-black uppercase text-xs flex items-center gap-2 shadow-lg"
             >
-              <Send size={16} /> Finish Quiz
+              <Send size={16} /> Finish & Submit
             </button>
           ) : (
             <button 
               onClick={() => setCurrentIndex(prev => prev + 1)}
-              className="flex items-center gap-2 text-green-500 font-black uppercase text-[10px]"
+              className="flex items-center gap-2 text-green-500 hover:text-green-400 transition-all font-black uppercase text-[10px]"
             >
-              Next <ChevronRight size={20} />
+              Next Question <ChevronRight size={20} />
             </button>
           )}
         </div>
