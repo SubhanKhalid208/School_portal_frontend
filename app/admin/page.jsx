@@ -135,6 +135,11 @@ export default function AdminDashboard() {
     e.preventDefault();
     const method = editingUserId ? 'PUT' : 'POST';
     const url = editingUserId ? `${API_BASE}/admin/users/${editingUserId}` : `${API_BASE}/admin/users`;
+    
+    // Agar edit ho raha hai toh password field bhejni hi nahi hai logic wise
+    const payload = { ...formData };
+    if (editingUserId) delete payload.password;
+
     try {
       const token = getAuthToken();
       const res = await fetch(url, {
@@ -143,11 +148,11 @@ export default function AdminDashboard() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       });
       const result = await res.json();
       if (result.success) {
-        toast.success(editingUserId ? "User updated!" : "User created!");
+        toast.success(editingUserId ? "User updated!" : "Direct registration successful!");
         closeModal();
         fetchUsers(searchTerm);
         fetchStats();
@@ -178,10 +183,15 @@ export default function AdminDashboard() {
     if (user) {
       setEditingUserId(user.id);
       setFormData({ 
-        name: user.name || '', email: user.email || '', 
-        role: user.role || 'student', password: '', 
+        name: user.name || '', 
+        email: user.email || '', 
+        role: user.role || 'student', 
+        password: '', // Edit mode mein password reset nahi hoga
         profile_pic: user.profile_pic || ''
       });
+    } else {
+      setEditingUserId(null);
+      setFormData({ name: '', email: '', role: 'student', password: '', profile_pic: '' });
     }
     setShowModal(true);
   };
@@ -316,12 +326,11 @@ export default function AdminDashboard() {
       {/* --- SMALL & CENTERED MODAL --- */}
       {showModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-6 animate-in fade-in duration-200" onClick={handleOverlayClick}>
-          {/* max-w-sm use kiya hai taake box kafi chota ho jaye */}
           <div ref={modalRef} className="bg-[#0f172a] border border-white/10 w-full max-w-sm rounded-[2.5rem] p-6 relative shadow-2xl shadow-green-500/10 ring-1 ring-white/5">
             <button onClick={closeModal} className="absolute right-5 top-5 text-gray-500 hover:text-white transition-colors"><X size={20}/></button>
             
             <h2 className="text-xl font-black mb-6 italic text-white uppercase tracking-tighter text-center">
-              {editingUserId ? "Update Profile" : "New Account"}
+              {editingUserId ? "Update Profile" : "Direct Register"}
             </h2>
             
             <form onSubmit={handleSaveUser} className="space-y-4">
@@ -339,7 +348,16 @@ export default function AdminDashboard() {
               <div className="space-y-3">
                 <InputField label="Name" value={formData.name} onChange={(v) => setFormData({...formData, name: v})} />
                 <InputField label="Email" type="email" value={formData.email} onChange={(v) => setFormData({...formData, email: v})} />
-                {!editingUserId && <InputField label="Password" type="password" value={formData.password} onChange={(v) => setFormData({...formData, password: v})} />}
+                
+                {/* Sirf naye user ke liye password field dikhegi */}
+                {!editingUserId && (
+                   <InputField 
+                    label="Set Password" 
+                    type="password" 
+                    value={formData.password} 
+                    onChange={(v) => setFormData({...formData, password: v})} 
+                   />
+                )}
 
                 <div>
                   <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1.5 block px-1">Access Role</label>
@@ -356,7 +374,7 @@ export default function AdminDashboard() {
               </div>
 
               <button type="submit" disabled={uploading} className="w-full bg-green-500 text-black hover:bg-green-400 py-4 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all mt-2 active:scale-95 shadow-lg shadow-green-500/10">
-                {editingUserId ? "Confirm" : "Create Now"}
+                {editingUserId ? "Confirm" : "Register Now"}
               </button>
             </form>
           </div>
@@ -366,6 +384,7 @@ export default function AdminDashboard() {
   );
 }
 
+// StatCard Component
 function StatCard({icon, label, value, color, grad}) {
   const themes = { 
     blue: "text-blue-400 border-blue-500/10", 
@@ -383,6 +402,7 @@ function StatCard({icon, label, value, color, grad}) {
   );
 }
 
+// InputField Component
 function InputField({label, type="text", value, onChange}) {
   return (
     <div>

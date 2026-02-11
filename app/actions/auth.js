@@ -2,7 +2,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-// ✅ Centralized API URL construction
+// ✅ Centralized API URL construction (Wahi purana logic jo aapne diya)
 const getApiUrl = (endpoint) => {
   const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
@@ -26,7 +26,6 @@ export async function handleLogin(formData) {
       credentials: 'include'
     });
 
-    // Helpful debugging: include status and response text when JSON missing
     const contentType = res.headers.get("content-type");
     let data;
     if (contentType && contentType.includes("application/json")) {
@@ -44,7 +43,7 @@ export async function handleLogin(formData) {
     const user = data.user; 
     const cookieStore = await cookies();
 
-    // ✅ Session Cookies Setup
+    // ✅ Session Cookies Setup (Aapka original logic)
     cookieStore.set('token', data.token, { 
       httpOnly: false,
       secure: process.env.NODE_ENV === 'production', 
@@ -86,15 +85,16 @@ export async function handleSignup(formData) {
   const name = formData.get('name');
   const email = formData.get('email');
   const dob = formData.get('dob');
+  const password = formData.get('password'); // ✅ Password field yahan pakri
   const API_URL = getApiUrl('/auth/signup');
 
   try {
-    // Input validation
-    if (!name || !email) {
-      return { success: false, error: "Name aur Email zaroori hain!" };
+    // Input validation (Ab password zaroori hai)
+    if (!name || !email || !password) {
+      return { success: false, error: "Name, Email aur Password zaroori hain!" };
     }
 
-    console.log(`📝 Registration attempt for: ${email}`);
+    console.log(`📝 Direct Registration attempt for: ${email}`);
     console.log(`📡 Sending to: ${API_URL}`);
 
     const res = await fetch(API_URL, {
@@ -103,6 +103,7 @@ export async function handleSignup(formData) {
       body: JSON.stringify({ 
         name: name.trim(), 
         email: email.toLowerCase().trim(), 
+        password: password, // ✅ Password payload mein bhej diya
         dob: dob || null, 
         role: 'student' 
       }),
@@ -131,7 +132,7 @@ export async function handleSignup(formData) {
     console.log("✅ Registration successful:", data);
     return { 
       success: true, 
-      message: data.message || "Registration successful! Email check karein password set karne ke liye.",
+      message: data.message || "Account ban gaya hai! Ab isi password se login karein.", // ✅ Message updated
       userId: data.userId
     };
 
