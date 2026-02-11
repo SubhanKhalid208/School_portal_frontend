@@ -2,7 +2,18 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, ClipboardCheck, LogOut, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
+import { 
+  LayoutDashboard, 
+  Users, 
+  ClipboardCheck, 
+  LogOut, 
+  ChevronLeft, 
+  ChevronRight, 
+  FileText, 
+  PenTool, 
+  UserPlus, 
+  BookOpenCheck 
+} from 'lucide-react';
 import Cookies from 'js-cookie';
 
 export default function Sidebar({ role, onCollapseChange }) {
@@ -29,12 +40,19 @@ export default function Sidebar({ role, onCollapseChange }) {
     teacher: [
       { name: 'My Dashboard', path: '/teacher', icon: <LayoutDashboard size={20}/> },
       { name: 'Attendance', path: '/teacher/attendance', icon: <ClipboardCheck size={20}/> },
+      { name: 'Create Quiz', path: '/teacher/create-quiz', icon: <PenTool size={20}/> },
+      { name: 'Assign Quiz', path: '/teacher/assign-quiz', icon: <UserPlus size={20}/> },
     ],
     student: [
       { 
         name: 'My Dashboard', 
         path: userId ? `/dashboard/student/${userId}` : '#', 
         icon: <LayoutDashboard size={20}/> 
+      },
+      { 
+        name: 'My Quizzes', 
+        path: '/student/quizzes', // Student ki assigned quizzes ka list page
+        icon: <BookOpenCheck size={20}/> 
       },
       { 
         name: 'Attendance Report', 
@@ -72,11 +90,10 @@ export default function Sidebar({ role, onCollapseChange }) {
         <h1 className={`font-bold text-green-500 transition-all ${isCollapsed ? 'text-sm' : 'text-xl italic font-black'}`}>
           {isCollapsed ? 'LP' : 'Lahore Portal'}
         </h1>
-        {/* HYDRATION FIX: Role text only renders when mounted */}
         {!isCollapsed && <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">{role} Panel</p>}
       </div>
 
-      <nav className="flex-1 space-y-2">
+      <nav className="flex-1 space-y-2 overflow-y-auto custom-scrollbar">
         {currentMenu.map((item) => {
           const isActive = pathname === item.path;
           const isDisabled = item.path === '#';
