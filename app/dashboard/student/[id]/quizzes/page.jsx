@@ -18,18 +18,19 @@ export default function StudentQuizzesPage() {
   const fetchQuizzes = async () => {
     try {
       setLoading(true);
-      // Lahore Portal API Call
       const res = await safeApiCall('/quiz/student/my-quizzes');
       
-      // ✅ Check both res.success and direct array
-      if (res && (res.success || Array.isArray(res))) {
-        const data = Array.isArray(res) ? res : res.data;
-        setQuizzes(data || []);
+      console.log("Subhan - Dashboard Data Check:", res); // Check marks in console
+
+      if (res) {
+        // Handle both success wrapper and direct array
+        const data = Array.isArray(res) ? res : (res.data || []);
+        setQuizzes(data);
       } else {
-        toast.error(res?.error || "Quizzes load nahi ho sakein");
+        toast.error("Quizzes load nahi ho sakein");
       }
     } catch (err) {
-      toast.error("Network error: Quizzes load karne mein masla hua");
+      toast.error("Network error occured");
     } finally {
       setLoading(false);
     }
@@ -47,8 +48,8 @@ export default function StudentQuizzesPage() {
         <h1 className="text-3xl font-black italic uppercase tracking-tighter flex items-center gap-3">
           <ClipboardList className="text-green-500" /> My Assigned Quizzes
         </h1>
-        <p className="text-gray-500 text-[10px] mt-1 uppercase font-bold tracking-widest">
-          Lahore Portal: Attempt your exams and check results
+        <p className="text-gray-500 text-[10px] mt-1 uppercase font-bold tracking-widest text-left">
+          Lahore Portal: Track your progress and scores
         </p>
       </div>
 
@@ -58,55 +59,62 @@ export default function StudentQuizzesPage() {
              <p className="text-gray-500 italic">Abhi tak koi quiz assign nahi kiya gaya.</p>
           </div>
         ) : (
-          quizzes.map((quiz) => (
-            <div key={quiz.assignment_id} className="bg-[#161d2f] p-6 rounded-[2.5rem] border border-white/5 shadow-xl hover:border-green-500/30 transition-all group relative overflow-hidden">
-              
-              {/* ✅ Marks Badge: Agar quiz complete hai to score dikhao */}
-              {quiz.is_completed && (
-                <div className="absolute top-0 right-0 bg-green-500 text-black px-4 py-1 rounded-bl-2xl font-black text-[10px] flex items-center gap-1 shadow-lg">
-                  <Award size={12} /> SCORE: {quiz.score || 0} / {quiz.total_marks}
-                </div>
-              )}
+          quizzes.map((quiz) => {
+            // ✅ CRITICAL FIX: Checking multiple field names for score
+            const displayScore = quiz.score ?? quiz.obtained_marks ?? 0;
+            const totalMarks = quiz.total_marks || 5; 
+            const isCompleted = quiz.is_completed || quiz.status === 'completed';
 
-              <div className="flex justify-between items-start mb-4">
-                <div className={`p-2 rounded-xl ${quiz.is_completed ? 'bg-green-500/10 text-green-500' : 'bg-yellow-500/10 text-yellow-500'}`}>
-                  {quiz.is_completed ? <CheckCircle size={20} /> : <Clock size={20} />}
+            return (
+              <div key={quiz.assignment_id} className="bg-[#161d2f] p-6 rounded-[2.5rem] border border-white/5 shadow-xl hover:border-green-500/30 transition-all group relative overflow-hidden">
+                
+                {/* Score Badge */}
+                {isCompleted && (
+                  <div className="absolute top-0 right-0 bg-green-500 text-black px-4 py-2 rounded-bl-2xl font-black text-[10px] flex items-center gap-1 shadow-lg z-10">
+                    <Award size={12} /> SCORE: {displayScore} / {totalMarks}
+                  </div>
+                )}
+
+                <div className="flex justify-between items-start mb-4">
+                  <div className={`p-2 rounded-xl ${isCompleted ? 'bg-green-500/10 text-green-500' : 'bg-yellow-500/10 text-yellow-500'}`}>
+                    {isCompleted ? <CheckCircle size={20} /> : <Clock size={20} />}
+                  </div>
+                  {!isCompleted && (
+                    <span className="text-[10px] font-black uppercase text-gray-600">Total Marks: {totalMarks}</span>
+                  )}
                 </div>
-                {!quiz.is_completed && (
-                  <span className="text-[10px] font-black uppercase text-gray-600">Total Marks: {quiz.total_marks}</span>
+
+                <h3 className="text-xl font-bold mb-2 group-hover:text-green-500 transition-colors uppercase">{quiz.title}</h3>
+                <p className="text-gray-400 text-sm mb-4 line-clamp-2 italic">{quiz.description || "No description provided."}</p>
+                
+                <div className="flex flex-col gap-1 mb-6 bg-[#0a0f1c] p-3 rounded-2xl border border-white/5">
+                  <span className="text-[10px] font-black uppercase text-gray-500">Teacher:</span>
+                  <span className="text-sm font-bold text-gray-300 uppercase">{quiz.teacher_name || "Assigned Teacher"}</span>
+                </div>
+
+                {isCompleted ? (
+                  <div className="space-y-3">
+                    <div className="bg-green-500/5 p-4 rounded-2xl flex justify-between items-center border border-green-500/10">
+                       <span className="text-[10px] font-black text-gray-500 uppercase">Result Status</span>
+                       <span className="text-xs font-bold text-green-500 uppercase tracking-tighter">Passed</span>
+                    </div>
+                    <button disabled className="w-full bg-white/5 text-gray-500 p-4 rounded-2xl font-black uppercase text-[10px] border border-white/5">
+                      QUIZ COMPLETED
+                    </button>
+                  </div>
+                ) : (
+                  <Link 
+                    href={`/dashboard/student/${params.id}/quizzes/attempt/${quiz.assignment_id}`} 
+                    className="block"
+                  >
+                    <button className="w-full bg-green-500 hover:bg-green-600 text-black p-4 rounded-2xl font-black uppercase text-xs flex items-center justify-center gap-2 transition-all active:scale-95 shadow-[0_10px_20px_rgba(34,197,94,0.2)]">
+                      <Play size={16} fill="currentColor" /> Start Quiz
+                    </button>
+                  </Link>
                 )}
               </div>
-
-              <h3 className="text-xl font-bold mb-2 group-hover:text-green-500 transition-colors">{quiz.title}</h3>
-              <p className="text-gray-400 text-sm mb-4 line-clamp-2">{quiz.description || "No description provided."}</p>
-              
-              <div className="flex flex-col gap-1 mb-6">
-                <span className="text-[10px] font-black uppercase text-gray-500">Teacher:</span>
-                <span className="text-sm font-bold text-gray-300">{quiz.teacher_name || "Assigned Teacher"}</span>
-              </div>
-
-              {quiz.is_completed ? (
-                <div className="space-y-3">
-                  <div className="bg-white/5 p-4 rounded-2xl flex justify-between items-center border border-white/5">
-                     <span className="text-[10px] font-black text-gray-500 uppercase tracking-tighter">Result Status</span>
-                     <span className="text-xs font-bold text-green-500 uppercase">Passed</span>
-                  </div>
-                  <button disabled className="w-full bg-white/5 text-gray-500 p-4 rounded-2xl font-black uppercase text-[10px] cursor-not-allowed border border-white/5">
-                    COMPLETED
-                  </button>
-                </div>
-              ) : (
-                <Link 
-                  href={`/dashboard/student/${params.id}/quizzes/attempt/${quiz.assignment_id}`} 
-                  className="block"
-                >
-                  <button className="w-full bg-green-500 hover:bg-green-600 text-black p-4 rounded-2xl font-black uppercase text-xs flex items-center justify-center gap-2 transition-all active:scale-95 shadow-[0_10px_20px_rgba(34,197,94,0.2)]">
-                    <Play size={16} fill="currentColor" /> Start Quiz
-                  </button>
-                </Link>
-              )}
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>
