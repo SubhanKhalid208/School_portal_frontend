@@ -34,22 +34,32 @@ export default function AttemptQuizPage() {
 
   const loadQuestions = async () => {
     try {
-      const data = await safeApiCall(`/quiz/questions/${assignmentId}`);
-      console.log("Subhan, API Response Check:", data); 
+      setLoading(true);
+      const response = await safeApiCall(`/quiz/questions/${assignmentId}`);
+      
+      // Console mein check karein ke actual structure kya hai
+      console.log("Subhan - Full API Response:", response); 
 
-      if (data) {
-        // ✅ IS LOGIC KO DHAYAN SE DEKHEIN:
-        // Agar data array hai to wese hi use karo, agar object hai to array mein wrap karo
-        let finalData = Array.isArray(data) ? data : [data];
+      // Deep Check: Data kahan chupa hua hai?
+      let rawData = response?.data || response?.questions || response;
+
+      if (rawData) {
+        // Agar single object hai to array mein convert karein
+        const questionsArray = Array.isArray(rawData) ? rawData : [rawData];
         
-        // Extra safety: Filter empty objects
-        finalData = finalData.filter(q => q && (q.id || q.question_text));
+        // Filter out any null/undefined
+        const finalQuestions = questionsArray.filter(q => q && (q.question_text || q.id));
 
-        if (finalData.length > 0) {
-          setQuestions(finalData);
+        if (finalQuestions.length > 0) {
+          setQuestions(finalQuestions);
+          console.log("Questions successfully set:", finalQuestions);
         } else {
+          console.log("Questions array empty after filtering");
           setQuestions([]);
         }
+      } else {
+        console.log("No data found in response");
+        setQuestions([]);
       }
     } catch (err) {
       console.error("Load Error:", err);
