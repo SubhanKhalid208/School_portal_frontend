@@ -14,11 +14,14 @@ export default function AttendanceReportPage({ params }) {
 
   useEffect(() => {
     if (attendanceData?.success) {
-      // Latest attendance hamesha upar honi chahiye
-      const sortedHistory = (attendanceData.history || []).sort((a, b) => new Date(b.date) - new Date(a.date));
+      // ✅ FIX: Spread operator [...] use kiya hai array ki copy banane ke liye
+      // RTK Query ka data read-only hota hai, isliye direct sort nahi ho sakta
+      const sortedHistory = [...(attendanceData.history || [])].sort((a, b) => 
+        new Date(b.date) - new Date(a.date)
+      );
       setHistory(sortedHistory);
-    } else if (attendanceData?.error) {
-      toast.error(attendanceData.error || "Data fetch karne mein masla hua.");
+    } else if (attendanceData?.success === false) {
+      toast.error(attendanceData.message || "Data fetch karne mein masla hua.");
     }
   }, [attendanceData]);
 
@@ -53,11 +56,11 @@ export default function AttendanceReportPage({ params }) {
           href={`/dashboard/student/${studentId}`}
           className="flex items-center gap-2 bg-[#161d2f] hover:bg-green-600 border border-gray-800 hover:border-green-500 px-6 py-3 rounded-2xl transition-all font-bold text-sm shadow-xl"
         >
-          <ChevronLeft size={18} /> BACK TO DASHBOARD
+          <span className="flex items-center gap-2"><ChevronLeft size={18} /> BACK TO DASHBOARD</span>
         </Link>
       </div>
 
-      {/* Stats Summary (Quick View) */}
+      {/* Stats Summary */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
          <div className="bg-[#161d2f] p-6 rounded-2xl border border-gray-800 flex justify-between items-center">
             <span className="text-gray-400 font-bold uppercase text-xs">Total Records</span>
