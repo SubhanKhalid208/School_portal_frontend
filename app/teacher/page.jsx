@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
 import Cookies from 'js-cookie';
 import { getApiUrl, fetchWithRetry } from '@/app/utils/api';
-import { ClipboardList, Users, Eye, X, Award, Calendar, BookOpen, Trash2, List } from 'lucide-react';
+import { ClipboardList, Users, Eye, X, Award, Calendar, BookOpen, Trash2, List, AlertTriangle } from 'lucide-react';
 
 // --- 1. QUESTIONS VIEW & DELETE MODAL ---
 function QuestionsModal({ quizId, onClose }) {
@@ -39,7 +39,7 @@ function QuestionsModal({ quizId, onClose }) {
       }, 1);
       if (res.ok) {
         toast.success("Question deleted!");
-        fetchQuestions(); // List refresh karein
+        fetchQuestions(); 
       }
     } catch (err) {
       toast.error("Delete fail ho gaya");
@@ -182,9 +182,8 @@ export default function TeacherDashboard() {
   const [stats, setStats] = useState({ totalStudents: 0, totalSubjects: 0, teacherName: '' });
   const [loading, setLoading] = useState(true);
   
-  // Modals State
-  const [selectedQuizId, setSelectedQuizId] = useState(null); // For Results
-  const [viewQuestionsId, setViewQuestionsId] = useState(null); // For MCQs View
+  const [selectedQuizId, setSelectedQuizId] = useState(null); 
+  const [viewQuestionsId, setViewQuestionsId] = useState(null); 
   
   const [showModal, setShowModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState(null);
@@ -237,6 +236,29 @@ export default function TeacherDashboard() {
     if (typeof window !== 'undefined') { fetchDashboardData(); }
   }, [fetchDashboardData]);
 
+  // ✅ POORA QUIZ DELETE KARNE KA FUNCTION
+  const handleDeleteQuiz = async (quizId) => {
+    if (!window.confirm("WARNING: Yeh poora quiz aur iske saare student results delete kar dega. Kya aap sure hain?")) return;
+    
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetchWithRetry(getApiUrl(`/quiz/teacher/delete-quiz/${quizId}`), {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      }, 1);
+
+      if (res.ok) {
+        toast.success("Quiz deleted successfully!");
+        fetchDashboardData(); // Refresh table
+      } else {
+        const errorData = await res.json();
+        toast.error(errorData.message || "Delete fail ho gaya");
+      }
+    } catch (err) {
+      toast.error("Network error: Quiz delete nahi ho saka");
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const token = localStorage.getItem('token');
@@ -259,7 +281,7 @@ export default function TeacherDashboard() {
     } catch (err) { toast.error("Server error."); }
   };
 
-  const handleDelete = async (id) => {
+  const handleDeleteSubject = async (id) => {
     const token = localStorage.getItem('token');
     if (!window.confirm("Delete this subject?")) return;
     try {
@@ -277,7 +299,6 @@ export default function TeacherDashboard() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto text-white space-y-10">
-      {/* Modals Render */}
       {selectedQuizId && <ResultsModal quizId={selectedQuizId} onClose={() => setSelectedQuizId(null)} />}
       {viewQuestionsId && <QuestionsModal quizId={viewQuestionsId} onClose={() => setViewQuestionsId(null)} />}
 
@@ -327,7 +348,7 @@ export default function TeacherDashboard() {
                   <td className="p-5 text-gray-400 text-sm max-w-[300px] truncate">{course.description || "No description provided."}</td>
                   <td className="p-5 text-right space-x-4">
                     <button onClick={() => { setEditingCourse(course); setFormData({title: course.name || course.title, description: course.description}); setShowModal(true); }} className="text-blue-400 hover:text-blue-200 font-black text-[10px] uppercase transition-colors">Edit</button>
-                    <button onClick={() => handleDelete(course.id)} className="text-red-500 hover:text-red-300 font-black text-[10px] uppercase transition-colors">Delete</button>
+                    <button onClick={() => handleDeleteSubject(course.id)} className="text-red-500 hover:text-red-300 font-black text-[10px] uppercase transition-colors">Delete</button>
                   </td>
                 </tr>
               ))}
@@ -359,19 +380,26 @@ export default function TeacherDashboard() {
                   <td className="p-5 font-bold text-green-300 group-hover:text-green-100 italic uppercase">{quiz.title}</td>
                   <td className="p-5 text-center font-black text-xl text-white">{quiz.total_marks}</td>
                   <td className="p-5 text-right">
-                    <div className="flex justify-end gap-3">
-                      {/* ✅ Naya Button for MCQs */}
+                    <div className="flex justify-end items-center gap-3">
                       <button 
                         onClick={() => setViewQuestionsId(quiz.id)}
-                        className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl font-black uppercase text-[10px] flex items-center gap-2 transition-all"
+                        className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-xl font-black uppercase text-[10px] flex items-center gap-2 transition-all"
                       >
                         <List size={14} /> MCQs
                       </button>
                       <button 
                         onClick={() => setSelectedQuizId(quiz.id)}
-                        className="bg-green-500 hover:bg-green-400 text-black px-4 py-2 rounded-xl font-black uppercase text-[10px] flex items-center gap-2 shadow-lg shadow-green-500/20 transition-all"
+                        className="bg-green-500 hover:bg-green-400 text-black px-3 py-2 rounded-xl font-black uppercase text-[10px] flex items-center gap-2 transition-all"
                       >
                         <Eye size={14} /> Results
+                      </button>
+                      {/* ✅ NAYA DELETE QUIZ BUTTON */}
+                      <button 
+                        onClick={() => handleDeleteQuiz(quiz.id)}
+                        className="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white px-3 py-2 rounded-xl font-black uppercase text-[10px] flex items-center gap-2 border border-red-500/20 transition-all"
+                        title="Delete Entire Quiz"
+                      >
+                        <Trash2 size={14} /> Delete
                       </button>
                     </div>
                   </td>
@@ -386,7 +414,7 @@ export default function TeacherDashboard() {
         </div>
       </div>
 
-      {/* MODAL FOR SUBJECTS (Same as before) */}
+      {/* MODAL FOR SUBJECTS */}
       {showModal && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 backdrop-blur-md">
           <div className="bg-[#161d2f] border border-white/10 p-8 rounded-[2.5rem] w-full max-w-md shadow-2xl">
