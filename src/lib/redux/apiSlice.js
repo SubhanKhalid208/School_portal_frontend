@@ -1,17 +1,26 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
+// ✅ Environment variable se URL uthana behtar hai
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://schoolportalbackend-production-e803.up.railway.app';
+
 export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery: fetchBaseQuery({
-    baseUrl: 'https://school-portal-backend-production.up.railway.app/api', 
+    // Is logic se double slash (//) ka masla nahi hoga
+    baseUrl: `${BASE_URL.endsWith('/') ? BASE_URL.slice(0, -1) : BASE_URL}/api`, 
     prepareHeaders: (headers) => {
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      
+      // ✅ Authentication
       if (token) {
         headers.set('authorization', `Bearer ${token}`);
       }
+
+      // ✅ CORS aur JSON structure ke liye lazmi headers
+      headers.set('Accept', 'application/json');
       return headers;
     },
-    // ✅ Yeh line browser ko cookies aur sessions allow karne ke liye lazmi hai
+    // ✅ Cross-site cookies aur sessions allow karne ke liye
     credentials: 'include', 
   }),
   tagTypes: ['Quiz', 'Attendance', 'Course', 'MCQ', 'Result', 'User', 'Admin', 'Student', 'Auth'], 
@@ -76,7 +85,7 @@ export const apiSlice = createApi({
       invalidatesTags: ['User', 'Admin'],
     }),
 
-    // --- COURSES (ERP & Teacher) ---
+    // --- COURSES ---
     getCourses: builder.query({ query: () => '/courses/all', providesTags: ['Course'] }),
     deleteCourse: builder.mutation({
       query: (id) => ({ url: `/courses/delete/${id}`, method: 'DELETE' }),
@@ -98,7 +107,7 @@ export const apiSlice = createApi({
     }),
     getTeacherStudents: builder.query({ query: () => '/teacher/students', providesTags: ['Student'] }),
 
-    // --- QUIZ MANAGEMENT (Teacher) ---
+    // --- QUIZ MANAGEMENT ---
     getQuizzes: builder.query({ query: () => '/quiz/teacher/all-quizzes', providesTags: ['Quiz'] }),
     getTeacherQuizzes: builder.query({ query: () => '/quiz/teacher/all-quizzes', providesTags: ['Quiz'] }),
     createQuiz: builder.mutation({ 
