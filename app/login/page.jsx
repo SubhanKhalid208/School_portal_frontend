@@ -4,74 +4,78 @@ import { toast } from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Cookies from 'js-cookie'; 
-import { useLoginMutation } from '@/src/lib/redux/apiSlice'; // ✅ Redux Hook Import kiya
+import { useLoginMutation } from '@/src/lib/redux/apiSlice';
 
 export default function LoginPage() {
   const [isClient, setIsClient] = useState(false);
   const router = useRouter();
-  
-  // ✅ Redux Mutation Hook use kiya
-  // isLoading khud batayega ke request chal rahi hai ya nahi
   const [login, { isLoading }] = useLoginMutation();
 
   useEffect(() => {
     setIsClient(true);
+    // Agar pehle se token hai to seedha dashboard bhej dein (Optional)
+    const token = Cookies.get('token');
+    if (token) {
+      // router.push('/'); // Aap apni marzi se enable kar sakte hain
+    }
   }, []);
 
   const handleGoogleLogin = () => {
+    // Railway URL fix
     const backendURL = process.env.NEXT_PUBLIC_API_URL || "https://school-portal-backend-production.up.railway.app";
     window.location.href = `${backendURL}/api/auth/google`;
   };
 
   const onSubmit = async (e) => {
     e.preventDefault();
-    
     const formData = new FormData(e.currentTarget);
-    const email = formData.get('email');
+    const email = formData.get('email').trim();
     const password = formData.get('password');
 
     try {
-      // ✅ Redux Login call
+      // ✅ Redux Login Call
       const result = await login({ email, password }).unwrap();
       
-      console.log("🔐 Redux Login Result:", result);
-
-      if (result) {
+      if (result && (result.token || result.success)) {
         toast.success("✅ Welcome to Lahore Portal!");
 
-        // 1. Data Normalization
+        // 1. Data Extracting
         const tokenToSave = result.token;
-        const userRole = result.user?.role ? result.user.role.toLowerCase().trim() : 'student';
+        const userRole = result.user?.role?.toLowerCase().trim() || 'student';
         const userId = result.user?._id || result.userId;
 
-        // 2. Persistent Saving (For Middleware and API Headers)
+        // 2. Cookies & Storage (Ensuring 'none' sameSite for cross-domain)
+        const cookieOptions = { expires: 1, path: '/', secure: true, sameSite: 'none' };
+        
         if (tokenToSave) {
-          Cookies.set('token', tokenToSave, { expires: 1, path: '/' });
+          Cookies.set('token', tokenToSave, cookieOptions);
           localStorage.setItem('token', tokenToSave);
         }
         
-        Cookies.set('role', userRole, { expires: 1, path: '/' });
+        Cookies.set('role', userRole, cookieOptions);
         if (userId) {
-          Cookies.set('userId', userId, { expires: 1, path: '/' });
+          Cookies.set('userId', userId, cookieOptions);
+          localStorage.setItem('userId', userId);
         }
 
-        // 3. Redirect Logic
+        // 3. Smart Redirect
+        // 600ms delay taake toast nazar aa jaye
         setTimeout(() => {
           if (userRole === 'admin') {
-            router.push('/admin'); 
+            router.replace('/admin'); 
           } else if (userRole === 'teacher') {
-            router.push('/teacher');
-          } else if (userRole === 'student') {
-            router.push(userId ? `/dashboard/student/${userId}` : '/dashboard/student');
+            router.replace('/teacher');
           } else {
-            router.push('/');
+            // Student path fix
+            const path = userId ? `/dashboard/student/${userId}` : '/dashboard/student';
+            router.replace(path);
           }
-        }, 600); 
+        }, 800); 
       }
     } catch (err) {
-      console.error("❌ Login Error:", err);
-      // RTK Query errors ko err.data mein bhejta hai
-      const errorMessage = err?.data?.message || "Login fail ho gaya!";
+      console.error("❌ Login Failure:", err);
+      // Detailed error logging
+      const errorMessage = err?.data?.message || err?.error || "Login fail ho gaya! Server check karein.";
       toast.error(errorMessage);
     }
   };
@@ -92,7 +96,7 @@ export default function LoginPage() {
               type="email" 
               required 
               className="w-full p-4 rounded-xl bg-black/40 text-white border border-white/10 focus:border-green-500 outline-none transition-all text-sm"
-              placeholder="subhan@example.com"
+              placeholder="ahmed@lahore.com"
             />
           </div>
           
@@ -110,7 +114,7 @@ export default function LoginPage() {
           <button 
             disabled={isLoading}
             type="submit"
-            className="w-full bg-white text-black font-black uppercase tracking-widest py-4 rounded-xl transition-all shadow-lg active:scale-95 disabled:bg-gray-700 mt-2 hover:bg-green-500"
+            className="w-full bg-white text-black font-black uppercase tracking-widest py-4 rounded-xl transition-all shadow-lg active:scale-95 disabled:bg-gray-700 mt-2 hover:bg-green-500 hover:text-white"
           >
             {isLoading ? 'Verifying...' : 'Login Now'}
           </button>
