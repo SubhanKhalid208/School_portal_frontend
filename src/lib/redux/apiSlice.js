@@ -11,7 +11,7 @@ export const apiSlice = createApi({
       }
       return headers;
     },
-    // ✅ 1. CORS Fix: Yeh line browser ko batati hai ke login session allow kare
+    // ✅ Yeh line browser ko cookies aur sessions allow karne ke liye lazmi hai
     credentials: 'include', 
   }),
   tagTypes: ['Quiz', 'Attendance', 'Course', 'MCQ', 'Result', 'User', 'Admin', 'Student', 'Auth'], 
