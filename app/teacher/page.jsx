@@ -3,9 +3,98 @@ import { useEffect, useState, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
 import Cookies from 'js-cookie';
 import { getApiUrl, fetchWithRetry } from '@/app/utils/api';
-import { ClipboardList, Users, Eye, X, Award, Calendar, BookOpen } from 'lucide-react';
+import { ClipboardList, Users, Eye, X, Award, Calendar, BookOpen, Trash2, List } from 'lucide-react';
 
-// --- RESULTS MODAL COMPONENT ---
+// --- 1. QUESTIONS VIEW & DELETE MODAL ---
+function QuestionsModal({ quizId, onClose }) {
+  const [questions, setQuestions] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchQuestions = async () => {
+    const token = localStorage.getItem('token');
+    try {
+      const url = getApiUrl(`/quiz/questions-list/${quizId}`);
+      const res = await fetchWithRetry(url, { 
+        method: 'GET', 
+        headers: { 'Authorization': `Bearer ${token}` } 
+      }, 1);
+      if (res.ok) {
+        const data = await res.json();
+        setQuestions(data);
+      }
+    } catch (err) {
+      toast.error("Questions load nahi ho sakay");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteQuestion = async (qId) => {
+    if (!window.confirm("Kya aap waqai yeh MCQ delete karna chahte hain?")) return;
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetchWithRetry(getApiUrl(`/quiz/question/${qId}`), {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      }, 1);
+      if (res.ok) {
+        toast.success("Question deleted!");
+        fetchQuestions(); // List refresh karein
+      }
+    } catch (err) {
+      toast.error("Delete fail ho gaya");
+    }
+  };
+
+  useEffect(() => { if (quizId) fetchQuestions(); }, [quizId]);
+
+  return (
+    <div className="fixed inset-0 bg-black/95 backdrop-blur-md z-[110] flex items-center justify-center p-4">
+      <div className="bg-[#161d2f] w-full max-w-3xl rounded-[2.5rem] border border-white/10 overflow-hidden shadow-2xl">
+        <div className="p-6 border-b border-white/5 flex justify-between items-center bg-[#1c253b]">
+          <h2 className="text-xl font-black uppercase italic text-blue-400 flex items-center gap-3">
+            <List size={22} /> Quiz Content / MCQs
+          </h2>
+          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full text-gray-400"><X size={24} /></button>
+        </div>
+        <div className="p-6 max-h-[70vh] overflow-y-auto space-y-4 custom-scrollbar">
+          {loading ? (
+            <div className="text-center py-10 animate-pulse font-black text-white uppercase italic">LOADING MCQS...</div>
+          ) : questions.length === 0 ? (
+            <div className="text-center py-10 text-gray-500 font-bold uppercase italic">No Questions Found</div>
+          ) : (
+            questions.map((q, idx) => (
+              <div key={q.id} className="bg-black/20 p-5 rounded-2xl border border-white/5 relative group hover:border-blue-500/30 transition-all">
+                <button 
+                  onClick={() => handleDeleteQuestion(q.id)}
+                  className="absolute top-4 right-4 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110 p-2 bg-red-500/10 rounded-lg"
+                  title="Delete Question"
+                >
+                  <Trash2 size={18} />
+                </button>
+                <p className="text-blue-500 text-[10px] font-black uppercase mb-1">Question {idx + 1}</p>
+                <h4 className="font-bold text-lg mb-4 pr-10 text-gray-100">{q.question_text}</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {JSON.parse(q.options).map((opt, i) => (
+                    <div key={i} className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 ${opt === q.correct_answer ? 'bg-green-500/20 border border-green-500/40 text-green-400' : 'bg-white/5 text-gray-500 border border-transparent'}`}>
+                       <div className={`w-2 h-2 rounded-full ${opt === q.correct_answer ? 'bg-green-500' : 'bg-gray-700'}`} />
+                       {opt}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+        <div className="p-4 bg-black/40 text-center border-t border-white/5">
+          <button onClick={onClose} className="text-gray-400 hover:text-white font-black uppercase text-[10px] tracking-widest">Close View</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --- 2. RESULTS MODAL COMPONENT ---
 function ResultsModal({ quizId, onClose }) {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -86,13 +175,16 @@ function ResultsModal({ quizId, onClose }) {
   );
 }
 
-// --- MAIN DASHBOARD ---
+// --- 3. MAIN DASHBOARD ---
 export default function TeacherDashboard() {
   const [myCourses, setMyCourses] = useState([]);
-  const [myQuizzes, setMyQuizzes] = useState([]); // ✅ Naya state for Quizzes
+  const [myQuizzes, setMyQuizzes] = useState([]); 
   const [stats, setStats] = useState({ totalStudents: 0, totalSubjects: 0, teacherName: '' });
   const [loading, setLoading] = useState(true);
-  const [selectedQuizId, setSelectedQuizId] = useState(null); // ✅ For Result Modal
+  
+  // Modals State
+  const [selectedQuizId, setSelectedQuizId] = useState(null); // For Results
+  const [viewQuestionsId, setViewQuestionsId] = useState(null); // For MCQs View
   
   const [showModal, setShowModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState(null);
@@ -111,7 +203,7 @@ export default function TeacherDashboard() {
     try {
       const courseUrl = getApiUrl(`/teacher/my-courses`);
       const statsUrl = getApiUrl(`/teacher/stats`);
-      const quizUrl = getApiUrl(`/quiz/teacher/all-quizzes`); // ✅ Backend API for quizzes
+      const quizUrl = getApiUrl(`/quiz/teacher/all-quizzes`);
       
       const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
 
@@ -185,8 +277,9 @@ export default function TeacherDashboard() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto text-white space-y-10">
-      {/* Result Modal Render */}
+      {/* Modals Render */}
       {selectedQuizId && <ResultsModal quizId={selectedQuizId} onClose={() => setSelectedQuizId(null)} />}
+      {viewQuestionsId && <QuestionsModal quizId={viewQuestionsId} onClose={() => setViewQuestionsId(null)} />}
 
       {/* Stats Section */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -243,7 +336,7 @@ export default function TeacherDashboard() {
         </div>
       </div>
 
-      {/* TABLE 2: QUIZZES (Zabardast Results View) */}
+      {/* TABLE 2: QUIZZES */}
       <div className="bg-[#161d2f] rounded-[2rem] border border-white/5 overflow-hidden shadow-2xl">
         <div className="p-6 border-b border-white/5 flex justify-between items-center bg-white/5">
           <h2 className="text-xl font-black italic uppercase tracking-tighter flex items-center gap-2">
@@ -257,7 +350,7 @@ export default function TeacherDashboard() {
               <tr>
                 <th className="p-5">Quiz Title</th>
                 <th className="p-5 text-center">Total Marks</th>
-                <th className="p-5 text-right">Performance</th>
+                <th className="p-5 text-right">Management & Performance</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
@@ -266,12 +359,21 @@ export default function TeacherDashboard() {
                   <td className="p-5 font-bold text-green-300 group-hover:text-green-100 italic uppercase">{quiz.title}</td>
                   <td className="p-5 text-center font-black text-xl text-white">{quiz.total_marks}</td>
                   <td className="p-5 text-right">
-                    <button 
-                      onClick={() => setSelectedQuizId(quiz.id)}
-                      className="bg-green-500 hover:bg-green-400 text-black px-4 py-2 rounded-xl font-black uppercase text-[10px] flex items-center gap-2 ml-auto shadow-lg shadow-green-500/20 transition-all hover:scale-105"
-                    >
-                      <Eye size={14} /> View Results
-                    </button>
+                    <div className="flex justify-end gap-3">
+                      {/* ✅ Naya Button for MCQs */}
+                      <button 
+                        onClick={() => setViewQuestionsId(quiz.id)}
+                        className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl font-black uppercase text-[10px] flex items-center gap-2 transition-all"
+                      >
+                        <List size={14} /> MCQs
+                      </button>
+                      <button 
+                        onClick={() => setSelectedQuizId(quiz.id)}
+                        className="bg-green-500 hover:bg-green-400 text-black px-4 py-2 rounded-xl font-black uppercase text-[10px] flex items-center gap-2 shadow-lg shadow-green-500/20 transition-all"
+                      >
+                        <Eye size={14} /> Results
+                      </button>
+                    </div>
                   </td>
                 </tr>
               )) : (
@@ -284,7 +386,7 @@ export default function TeacherDashboard() {
         </div>
       </div>
 
-      {/* MODAL FOR SUBJECTS */}
+      {/* MODAL FOR SUBJECTS (Same as before) */}
       {showModal && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 backdrop-blur-md">
           <div className="bg-[#161d2f] border border-white/10 p-8 rounded-[2.5rem] w-full max-w-md shadow-2xl">

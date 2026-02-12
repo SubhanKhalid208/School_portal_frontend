@@ -18,10 +18,8 @@ export default function AssignQuizPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // ✅ FIX: URL updated to match backend route
       const quizRes = await safeApiCall('/quiz/teacher/all-quizzes'); 
       
-      // Agar backend direct array bhej raha hai ya {data: []} mein
       if (quizRes) {
         const quizData = Array.isArray(quizRes) ? quizRes : (quizRes.data || []);
         setQuizzes(quizData);
@@ -29,7 +27,6 @@ export default function AssignQuizPage() {
         toast.error("Quizzes load nahi ho sakein");
       }
 
-      // 2. Fetch Students
       const userRes = await safeApiCall('/auth/users?role=student');
       if (userRes && userRes.success !== false) {
         const studentData = Array.isArray(userRes) ? userRes : (userRes.data || []);
@@ -66,6 +63,7 @@ export default function AssignQuizPage() {
     } catch (err) {
       toast.error("Network error: Assign nahi ho saka");
     }
+    
   };
 
   return (
@@ -98,7 +96,7 @@ export default function AssignQuizPage() {
         </div>
       </div>
 
-      {/* Search Bar */}
+      {/* Search Bar */}      
       <div className="relative mb-6">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
         <input 
