@@ -3,57 +3,30 @@ import { useEffect, useState, use } from 'react';
 import { toast } from 'react-hot-toast';
 import { Calendar, CheckCircle, XCircle, Clock, ChevronLeft, Info } from 'lucide-react';
 import Link from 'next/link';
-import { getApiUrl, fetchWithRetry } from '@/app/utils/api';
+import { useGetStudentAttendanceQuery } from '@/src/lib/redux/apiSlice';
 
 export default function AttendanceReportPage({ params }) {
   const resolvedParams = use(params);
   const studentId = resolvedParams.id;
 
+  const { data: attendanceData, isLoading: loading, error } = useGetStudentAttendanceQuery(studentId, { skip: !studentId });
   const [history, setHistory] = useState([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!studentId) return;
-
-    async function fetchAttendance() {
-      try {
-        setLoading(true);
-        // Token getter helper (Cookie ya LocalStorage dono check karega)
-        const token = typeof window !== 'undefined' ? (localStorage.getItem('token') || document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1]) : null;
-        
-        const url = getApiUrl(`/student/attendance/student/${studentId}`);
-        
-        const res = await fetchWithRetry(url, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}` 
-          }
-        }, 1);
-
-        if (res.status === 401 || res.status === 403) {
-          toast.error("Session expire ho gaya hai.");
-          return;
-        }
-
-        const result = await res.json();
-        
-        if (result.success) {
-          // Latest attendance hamesha upar honi chahiye
-          const sortedHistory = (result.history || []).sort((a, b) => new Date(b.date) - new Date(a.date));
-          setHistory(sortedHistory);
-        } else {
-          toast.error(result.error || "Data fetch karne mein masla hua.");
-        }
-      } catch (err) {
-        toast.error("Lahore Portal: Server connection error!");
-      } finally {
-        setLoading(false);
-      }
+    if (attendanceData?.success) {
+      // Latest attendance hamesha upar honi chahiye
+      const sortedHistory = (attendanceData.history || []).sort((a, b) => new Date(b.date) - new Date(a.date));
+      setHistory(sortedHistory);
+    } else if (attendanceData?.error) {
+      toast.error(attendanceData.error || "Data fetch karne mein masla hua.");
     }
+  }, [attendanceData]);
 
-    fetchAttendance();
-  }, [studentId]);
+  useEffect(() => {
+    if (error) {
+      toast.error("Lahore Portal: Server connection error!");
+    }
+  }, [error]);
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-[#0a0f1c]">

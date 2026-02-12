@@ -1,116 +1,60 @@
 'use client'
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import Cookies from 'js-cookie';
-import { getApiUrl, fetchWithRetry } from '@/app/utils/api';
+// ✅ Redux Hooks Import
+import { 
+  useGetTeacherStudentsQuery, 
+  useGetTeacherCoursesQuery, 
+  useCheckAttendanceStatusQuery, 
+  useMarkAttendanceMutation 
+} from '@/src/lib/redux/apiSlice';
 
 export default function AttendancePage() {
-  const [students, setStudents] = useState([]);
-  const [courses, setCourses] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState("");
-  const [markedStudents, setMarkedStudents] = useState([]); 
-  const [loading, setLoading] = useState(true);
-  
-  // ✅ Token aur TeacherId nikalne ka sahi tarika
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const teacherId = Cookies.get('userId');
+  const today = new Date().toISOString().split('T')[0];
 
-  useEffect(() => {
-    async function initData() {
-      if (!token) {
-        toast.error("Aap login nahi hain!");
-        setLoading(false);
-        return;
-      }
+  // ✅ Redux Queries (Auto-fetching)
+  const { data: studentsData, isLoading: loadingStudents } = useGetTeacherStudentsQuery();
+  const { data: coursesData, isLoading: loadingCourses } = useGetTeacherCoursesQuery();
+  
+  // ✅ Attendance status check hook (Skip if no course selected)
+  const { data: markedStudents = [], isFetching: checkingStatus } = useCheckAttendanceStatusQuery(
+    { date: today, courseId: selectedCourse },
+    { skip: !selectedCourse }
+  );
 
-      try {
-        const stuUrl = getApiUrl('/teacher/students');
-        const courseUrl = getApiUrl('/teacher/my-courses'); // Updated to use secure teacher courses
-        
-        const headers = { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        };
+  // ✅ Mutation Hook
+  const [markAttendance, { isLoading: isMarking }] = useMarkAttendanceMutation();
 
-        const [stuRes, courseRes] = await Promise.all([
-          fetchWithRetry(stuUrl, { method: 'GET', headers }, 1),
-          fetchWithRetry(courseUrl, { method: 'GET', headers }, 1)
-        ]);
-        
-        const studentsData = await stuRes.json();
-        const coursesData = await courseRes.json();
-        
-        // Backend response format ke mutabiq data extract karein
-        setStudents(Array.isArray(studentsData.data) ? studentsData.data : (Array.isArray(studentsData) ? studentsData : []));
-        setCourses(Array.isArray(coursesData.data) ? coursesData.data : (Array.isArray(coursesData) ? coursesData : []));
-      } catch (err) {
-        console.error("❌ Fetch Error:", err);
-        toast.error("Lahore Portal ka data load nahi ho saka");
-      } finally {
-        setLoading(false);
-      }
-    }
-    initData();
-  }, [token]);
+  const students = studentsData?.data || studentsData || [];
+  const courses = coursesData?.data || coursesData || [];
 
-  // Attendance Status Check (With Token)
-  useEffect(() => {
-    if (selectedCourse && token) {
-      const today = new Date().toISOString().split('T')[0];
-      const statusUrl = getApiUrl(`/attendance/check-status?date=${today}&courseId=${selectedCourse}`);
-      
-      fetchWithRetry(statusUrl, { 
-        method: 'GET',
-        headers: { 'Authorization': `Bearer ${token}` } 
-      }, 1)
-        .then(res => res.json())
-        .then(data => {
-          setMarkedStudents(Array.isArray(data) ? data : []);
-        })
-        .catch(() => console.error("Attendance status check fail"));
-    } else {
-      setMarkedStudents([]);
-    }
-  }, [selectedCourse, token]);
-
-  const markAttendance = async (studentId, status) => {
+  const handleMarkAttendance = async (studentId, status) => {
     if (!selectedCourse) {
       toast.error("Pehle Subject select karein!");
       return;
     }
 
     try {
-      const url = getApiUrl('/attendance/mark');
-      const res = await fetchWithRetry(url, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` // ✅ Token added
-        },
-        body: JSON.stringify({
-          studentId,
-          courseId: selectedCourse,
-          status,
-          teacherId,
-          date: new Date().toISOString().split('T')[0]
-        })
-      }, 1);
+      await markAttendance({
+        studentId,
+        courseId: selectedCourse,
+        status,
+        teacherId,
+        date: today
+      }).unwrap();
 
-      if (res.ok) {
-        toast.success(`✅ ${status === 'present' ? 'Present' : 'Absent'} mark ho gayi!`);
-        setMarkedStudents(prev => [...prev, studentId]);
-      } else {
-        const error = await res.json();
-        toast.error(error.message || "Attendance save nahi ho saki");
-      }
+      toast.success(`✅ ${status === 'present' ? 'Present' : 'Absent'} mark ho gayi!`);
     } catch (err) {
-      toast.error("Attendance save nahi ho saki");
+      toast.error(err?.data?.message || "Attendance save nahi ho saki");
     }
   };
 
-  if (loading) return (
+  if (loadingStudents || loadingCourses) return (
     <div className="flex items-center justify-center min-h-screen bg-[#0f172a]">
-      <div className="p-10 text-green-500 text-2xl font-bold animate-pulse text-center">
+      <div className="p-10 text-green-500 text-2xl font-bold animate-pulse text-center uppercase italic">
         Loading Lahore Portal Data...
       </div>
     </div>
@@ -120,16 +64,16 @@ export default function AttendancePage() {
     <div className="p-8 max-w-6xl mx-auto">
       <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white">Teacher Attendance Panel</h1>
-          <p className="text-gray-400 italic font-medium">As-Salam-u-Alaikum Subhan! Aaj ki attendance lagayein.</p>
+          <h1 className="text-3xl font-black text-white italic uppercase tracking-tighter">Attendance Panel</h1>
+          <p className="text-gray-400 italic font-medium">As-Salam-u-Alaikum Muhammad Ahmed! Aaj ki attendance lagayein.</p>
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-green-500 font-bold uppercase ml-1">Select Subject</label>
+          <label className="text-xs text-green-500 font-black uppercase ml-1 tracking-widest">Select Subject</label>
           <select 
             value={selectedCourse}
             onChange={(e) => setSelectedCourse(e.target.value)}
-            className="bg-[#161d2f] text-white border border-gray-800 p-3 rounded-xl focus:border-green-500 outline-none min-w-[200px] shadow-lg cursor-pointer transition-all"
+            className="bg-[#161d2f] text-white border border-white/10 p-4 rounded-xl focus:border-green-500 outline-none min-w-[240px] shadow-2xl cursor-pointer transition-all font-bold"
           >
             <option value="">-- Choose Course --</option>
             {courses.map(course => (
@@ -141,48 +85,48 @@ export default function AttendancePage() {
         </div>
       </div>
 
-      <div className="bg-[#161d2f] rounded-2xl border border-gray-800 overflow-hidden shadow-2xl">
+      <div className="bg-[#161d2f] rounded-[2rem] border border-white/5 overflow-hidden shadow-2xl">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
-            <thead className="bg-[#1f2937] text-gray-400 text-sm uppercase">
+            <thead className="bg-black/20 text-gray-500 text-[10px] font-black uppercase tracking-widest">
               <tr>
-                <th className="p-5">Student Name</th>
-                <th className="p-5 text-center">Action</th>
+                <th className="p-6">Student Name</th>
+                <th className="p-6 text-center">Mark Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-800">
+            <tbody className="divide-y divide-white/5">
               {students.length > 0 ? students.map((s) => {
                 const isAlreadyMarked = markedStudents.includes(s.id);
                 
                 return (
-                  <tr key={s.id} className="hover:bg-gray-800/30 transition-all">
-                    <td className="p-5">
-                      <div className="font-bold text-white">{s.name}</div>
-                      <div className="text-xs text-gray-500">{s.email}</div>
+                  <tr key={s.id} className="hover:bg-white/5 transition-all group">
+                    <td className="p-6">
+                      <div className="font-black text-gray-200 group-hover:text-white transition-colors uppercase italic">{s.name}</div>
+                      <div className="text-[10px] text-gray-500 font-mono tracking-tighter">{s.email}</div>
                     </td>
-                    <td className="p-5">
-                      <div className="flex justify-center gap-3">
+                    <td className="p-6">
+                      <div className="flex justify-center gap-4">
                         <button 
-                          disabled={isAlreadyMarked || !selectedCourse}
-                          onClick={() => markAttendance(s.id, 'present')}
-                          className={`px-6 py-2 rounded-lg font-bold text-xs transition-all ${
+                          disabled={isAlreadyMarked || !selectedCourse || isMarking}
+                          onClick={() => handleMarkAttendance(s.id, 'present')}
+                          className={`px-8 py-3 rounded-xl font-black text-[10px] uppercase transition-all tracking-widest ${
                             isAlreadyMarked 
-                              ? 'bg-gray-800 text-gray-600 cursor-not-allowed border border-gray-700' 
-                              : 'bg-green-600/10 text-green-500 border border-green-500/30 hover:bg-green-600 hover:text-white shadow-lg shadow-green-900/10'
+                              ? 'bg-gray-800/50 text-gray-600 border border-transparent' 
+                              : 'bg-green-500/10 text-green-500 border border-green-500/20 hover:bg-green-500 hover:text-white shadow-lg shadow-green-500/10 active:scale-95'
                           }`}
                         >
-                          {isAlreadyMarked ? '✓ MARKED' : 'PRESENT'}
+                          {isAlreadyMarked ? '✓ Recorded' : 'Present'}
                         </button>
                         <button 
-                          disabled={isAlreadyMarked || !selectedCourse}
-                          onClick={() => markAttendance(s.id, 'absent')}
-                          className={`px-6 py-2 rounded-lg font-bold text-xs transition-all ${
+                          disabled={isAlreadyMarked || !selectedCourse || isMarking}
+                          onClick={() => handleMarkAttendance(s.id, 'absent')}
+                          className={`px-8 py-3 rounded-xl font-black text-[10px] uppercase transition-all tracking-widest ${
                             isAlreadyMarked 
-                              ? 'bg-gray-800 text-gray-600 cursor-not-allowed border border-gray-700' 
-                              : 'bg-red-600/10 text-red-500 border border-red-500/30 hover:bg-red-600 hover:text-white shadow-lg shadow-red-900/10'
+                              ? 'bg-gray-800/50 text-gray-600 border border-transparent' 
+                              : 'bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500 hover:text-white shadow-lg shadow-red-500/10 active:scale-95'
                           }`}
                         >
-                          {isAlreadyMarked ? '✓ MARKED' : 'ABSENT'}
+                          {isAlreadyMarked ? '✓ Recorded' : 'Absent'}
                         </button>
                       </div>
                     </td>
@@ -190,7 +134,9 @@ export default function AttendancePage() {
                 );
               }) : (
                 <tr>
-                  <td colSpan="2" className="p-16 text-center text-gray-500 italic">No students found in Lahore Portal database.</td>
+                  <td colSpan="2" className="p-20 text-center text-gray-600 italic font-black uppercase tracking-[0.2em] text-xs">
+                    No students found in Lahore database.
+                  </td>
                 </tr>
               )}
             </tbody>

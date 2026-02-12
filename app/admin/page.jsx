@@ -1,17 +1,19 @@
 'use client'
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { useDispatch } from 'react-redux';
 import { Users, BookOpen, GraduationCap, Trash2, Edit, Search, X, Upload, FileUp, ShieldCheck, UserPlus, Layers } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import Cookies from 'js-cookie';
+import { 
+  useGetAdminStatsQuery, 
+  useGetAdminUsersQuery,
+  useCreateOrUpdateAdminUserMutation,
+  useDeleteAdminUserMutation,
+  useUploadAdminImageMutation,
+  useBulkUploadStudentsMutation
+} from '@/src/lib/redux/apiSlice';
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState({ students: 0, teachers: 0, courses: 0 });
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
-  const [bulkLoading, setBulkLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  
   const [showModal, setShowModal] = useState(false);
   const [editingUserId, setEditingUserId] = useState(null);
   const [formData, setFormData] = useState({ 
@@ -23,54 +25,23 @@ export default function AdminDashboard() {
   });
 
   const modalRef = useRef(null);
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://schoolportalbackend-production-e803.up.railway.app";
 
-  const getAuthToken = useCallback(() => {
-    const token = Cookies.get('token');
-    if (token) return token;
-    if (typeof window !== 'undefined') return localStorage.getItem('token');
-    return null;
-  }, []);
+  // RTK Query hooks
+  const { data: statsData, isLoading: statsLoading } = useGetAdminStatsQuery();
+  const { data: usersData, isLoading: usersLoading, refetch: refetchUsers } = useGetAdminUsersQuery(searchTerm);
+  const [uploadImage, { isLoading: uploading }] = useUploadAdminImageMutation();
+  const [saveUser, { isLoading: savingUser }] = useCreateOrUpdateAdminUserMutation();
+  const [deleteUser, { isLoading: deletingUser }] = useDeleteAdminUserMutation();
+  const [bulkUpload, { isLoading: bulkLoading }] = useBulkUploadStudentsMutation();
 
-  const fetchStats = useCallback(async () => {
-    try {
-      const token = getAuthToken();
-      if (!token) return;
-      const res = await fetch(`${API_BASE}/admin/stats`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const result = await res.json();
-      if (result.success && result.data) {
-        setStats({
-          students: result.data.students || 0,
-          teachers: result.data.teachers || 0,
-          courses: result.data.subjects || 0
-        });
-      }
-    } catch (err) { console.error("Stats fetch failed"); }
-  }, [API_BASE, getAuthToken]);
+  const stats = statsData?.data ? {
+    students: statsData.data.students || 0,
+    teachers: statsData.data.teachers || 0,
+    courses: statsData.data.subjects || 0
+  } : { students: 0, teachers: 0, courses: 0 };
 
-  const fetchUsers = useCallback(async (query = "") => {
-    try {
-      setLoading(true);
-      const token = getAuthToken();
-      if (!token) return;
-      const res = await fetch(`${API_BASE}/admin/users?search=${query}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const result = await res.json();
-      setUsers(result.success && Array.isArray(result.data) ? result.data : []);
-    } catch (err) {
-      toast.error("Lahore Portal sync error!");
-    } finally {
-      setLoading(false);
-    }
-  }, [API_BASE, getAuthToken]);
-
-  useEffect(() => {
-    fetchStats();
-    fetchUsers();
-  }, [fetchUsers, fetchStats]);
+  const users = usersData?.data && Array.isArray(usersData.data) ? usersData.data : [];
+  const loading = statsLoading || usersLoading;
 
   const handleBulkUpload = async (e) => {
     const file = e.target.files[0];
@@ -79,104 +50,63 @@ export default function AdminDashboard() {
       toast.error("Sirf CSV file allow hai!");
       return;
     }
-    const token = getAuthToken();
     const data = new FormData();
     data.append('file', file);
     try {
-      setBulkLoading(true);
       const loadingToast = toast.loading("Processing Lahore Portal Database...");
-      const res = await fetch(`${API_BASE}/student/bulk-upload`, {
-        method: 'POST',
-        body: data,
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const result = await res.json();
+      const res = await bulkUpload(data).unwrap();
       toast.dismiss(loadingToast);
-      if (res.ok) {
-        toast.success(result.message || "Bulk upload successful!");
-        fetchUsers();
-        fetchStats();
-      } else {
-        toast.error(result.error || "Upload fail ho gaya.");
-      }
+      toast.success(res.message || "Bulk upload successful!");
+      refetchUsers();
     } catch (err) {
-      toast.error("Network Error: Backend down hai.");
+      toast.error(err?.data?.error || "Network Error: Backend down hai.");
     } finally {
-      setBulkLoading(false);
       e.target.value = ''; 
     }
   };
 
   const handleImageUpload = async (file) => {
     if (!file) return;
-    const token = getAuthToken();
     const data = new FormData();
     data.append("file", file); 
     try {
-      setUploading(true);
-      const res = await fetch(`${API_BASE}/admin/upload-image`, {
-        method: "POST",
-        body: data,
-        headers: { 'Authorization': `Bearer ${token}` } 
-      });
-      const result = await res.json();
-      if (result.success && result.url) {
-        setFormData(prev => ({ ...prev, profile_pic: result.url }));
+      const res = await uploadImage(data).unwrap();
+      if (res.url) {
+        setFormData(prev => ({ ...prev, profile_pic: res.url }));
         toast.success("Profile picture updated!");
       }
     } catch (err) {
       toast.error("Image upload fail!");
-    } finally {
-      setUploading(false);
     }
   };
 
   const handleSaveUser = async (e) => {
     e.preventDefault();
-    const method = editingUserId ? 'PUT' : 'POST';
-    const url = editingUserId ? `${API_BASE}/admin/users/${editingUserId}` : `${API_BASE}/admin/users`;
-    
-    // Agar edit ho raha hai toh password field bhejni hi nahi hai logic wise
     const payload = { ...formData };
-    if (editingUserId) delete payload.password;
+    if (editingUserId) {
+      payload.id = editingUserId;
+      delete payload.password;
+    }
 
     try {
-      const token = getAuthToken();
-      const res = await fetch(url, {
-        method,
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      });
-      const result = await res.json();
-      if (result.success) {
-        toast.success(editingUserId ? "User updated!" : "Direct registration successful!");
-        closeModal();
-        fetchUsers(searchTerm);
-        fetchStats();
-      } else {
-        toast.error(result.error || "Ghalti!");
-      }
-    } catch (err) { toast.error("Server connection lost"); }
+      await saveUser(payload).unwrap();
+      toast.success(editingUserId ? "User updated!" : "Direct registration successful!");
+      closeModal();
+      refetchUsers();
+    } catch (err) { 
+      toast.error(err?.data?.error || "Ghalti!"); 
+    }
   };
 
   const handleDelete = async (id) => {
     if (!confirm("Kya aap waqai is user ko delete karna chahte hain?")) return;
     try {
-      const token = getAuthToken();
-      const res = await fetch(`${API_BASE}/admin/users/${id}`, { 
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const result = await res.json();
-      if (result.success) {
-        toast.success("User removed.");
-        fetchUsers(searchTerm); 
-        fetchStats();
-      }
-    } catch (err) { toast.error("Delete failed"); }
+      await deleteUser(id).unwrap();
+      toast.success("User removed.");
+      refetchUsers();
+    } catch (err) { 
+      toast.error("Delete failed"); 
+    }
   };
 
   const openModal = (user = null) => {
@@ -260,7 +190,7 @@ export default function AdminDashboard() {
               value={searchTerm}
               placeholder="Quick search..." 
               className="w-full bg-black/40 border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-sm outline-none focus:border-green-500/50 transition-all"
-              onChange={(e) => { setSearchTerm(e.target.value); fetchUsers(e.target.value); }} 
+              onChange={(e) => setSearchTerm(e.target.value)} 
             />
           </div>
         </div>

@@ -1,49 +1,50 @@
 'use client'
-import { handleLogin } from '../actions/auth';
 import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Cookies from 'js-cookie'; 
+import { useLoginMutation } from '@/src/lib/redux/apiSlice'; // ✅ Redux Hook Import kiya
 
 export default function LoginPage() {
-  const [loading, setLoading] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const router = useRouter();
+  
+  // ✅ Redux Mutation Hook use kiya
+  // isLoading khud batayega ke request chal rahi hai ya nahi
+  const [login, { isLoading }] = useLoginMutation();
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
   const handleGoogleLogin = () => {
-    // Railway URL explicitly added for stability
-    const backendURL = process.env.NEXT_PUBLIC_API_URL || "https://schoolportalbackend-production-e803.up.railway.app";
+    const backendURL = process.env.NEXT_PUBLIC_API_URL || "https://school-portal-backend-production.up.railway.app";
     window.location.href = `${backendURL}/api/auth/google`;
   };
 
   const onSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     
     const formData = new FormData(e.currentTarget);
-    
-    try {
-      const result = await handleLogin(formData);
-      
-      console.log("🔐 Login Result:", result);
+    const email = formData.get('email');
+    const password = formData.get('password');
 
-      if (result?.error) {
-        toast.error(result.error || "Login fail ho gaya!");
-        setLoading(false);
-      } else if (result) {
+    try {
+      // ✅ Redux Login call
+      const result = await login({ email, password }).unwrap();
+      
+      console.log("🔐 Redux Login Result:", result);
+
+      if (result) {
         toast.success("✅ Welcome to Lahore Portal!");
 
-        // 1. Data extraction & Normalization
+        // 1. Data Normalization
         const tokenToSave = result.token;
-        const userRole = result.role ? result.role.toLowerCase().trim() : 'student';
-        const userId = result.userId;
+        const userRole = result.user?.role ? result.user.role.toLowerCase().trim() : 'student';
+        const userId = result.user?._id || result.userId;
 
-        // 2. Persistent Saving
+        // 2. Persistent Saving (For Middleware and API Headers)
         if (tokenToSave) {
           Cookies.set('token', tokenToSave, { expires: 1, path: '/' });
           localStorage.setItem('token', tokenToSave);
@@ -68,9 +69,10 @@ export default function LoginPage() {
         }, 600); 
       }
     } catch (err) {
-      console.error("❌ Critical Login Error:", err);
-      toast.error("Server connection failed!");
-      setLoading(false);
+      console.error("❌ Login Error:", err);
+      // RTK Query errors ko err.data mein bhejta hai
+      const errorMessage = err?.data?.message || "Login fail ho gaya!";
+      toast.error(errorMessage);
     }
   };
 
@@ -106,11 +108,11 @@ export default function LoginPage() {
           </div>
 
           <button 
-            disabled={loading}
+            disabled={isLoading}
             type="submit"
             className="w-full bg-white text-black font-black uppercase tracking-widest py-4 rounded-xl transition-all shadow-lg active:scale-95 disabled:bg-gray-700 mt-2 hover:bg-green-500"
           >
-            {loading ? 'Verifying...' : 'Login Now'}
+            {isLoading ? 'Verifying...' : 'Login Now'}
           </button>
         </form>
 
