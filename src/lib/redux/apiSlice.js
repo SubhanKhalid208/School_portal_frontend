@@ -1,6 +1,5 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
-// ✅ Environment variable se URL uthana behtar hai
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://schoolportalbackend-production-e803.up.railway.app';
 
 export const apiSlice = createApi({
