@@ -5,24 +5,19 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://schoolportalbackend
 export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery: fetchBaseQuery({
-    // Is logic se double slash (//) ka masla nahi hoga
     baseUrl: `${BASE_URL.endsWith('/') ? BASE_URL.slice(0, -1) : BASE_URL}/api`, 
     prepareHeaders: (headers) => {
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-      
-      // ✅ Authentication
       if (token) {
         headers.set('authorization', `Bearer ${token}`);
       }
-
-      // ✅ CORS aur JSON structure ke liye lazmi headers
       headers.set('Accept', 'application/json');
       return headers;
     },
-    // ✅ Cross-site cookies aur sessions allow karne ke liye
     credentials: 'include', 
   }),
-  tagTypes: ['Quiz', 'Attendance', 'Course', 'MCQ', 'Result', 'User', 'Admin', 'Student', 'Auth'], 
+  // ✅ Added 'Analytics' to tagTypes
+  tagTypes: ['Quiz', 'Attendance', 'Course', 'MCQ', 'Result', 'User', 'Admin', 'Student', 'Auth', 'Analytics'], 
   endpoints: (builder) => ({
     
     // --- ATTENDANCE ---
@@ -37,6 +32,13 @@ export const apiSlice = createApi({
     getStudentAttendance: builder.query({ 
       query: (studentId) => `/student/attendance/student/${studentId}`, 
       providesTags: ['Attendance'] 
+    }),
+
+    // --- STUDENT ANALYTICS (Naya Feature: Charts ke liye) ---
+    // ✅ Yeh query backend se quiz trends aur attendance trends laati hai
+    getStudentAnalytics: builder.query({
+      query: (studentId) => `/student/analytics/${studentId}`,
+      providesTags: ['Analytics'],
     }),
 
     // --- AUTH ---
@@ -192,4 +194,5 @@ export const {
   useSubmitStudentQuizMutation,
   useGetStudentAttendanceQuery,
   useGetAuthUsersQuery,
+  useGetStudentAnalyticsQuery,
 } = apiSlice;
