@@ -1,7 +1,8 @@
 'use client'
 import { useEffect, useState, use } from 'react'; 
+import { useRouter } from 'next/navigation'; // ✅ Navigation ke liye add kiya
 import { toast } from 'react-hot-toast';
-import { BookOpen, GraduationCap, TrendingUp, CheckCircle, Calendar, Info, MapPin, Contact2 } from 'lucide-react';
+import { BookOpen, GraduationCap, TrendingUp, CheckCircle, Calendar, Info, MapPin, Contact2, ArrowRight } from 'lucide-react';
 import { safeApiCall } from '@/app/utils/api'; 
 
 import QuizProgressChart from './_components/QuizProgressChart';
@@ -11,6 +12,7 @@ import StudentIDCard from '@/components/StudentIDCard';
 export default function StudentDashboardPage({ params }) {
   const resolvedParams = use(params);
   const studentId = resolvedParams.id;
+  const router = useRouter(); // ✅ Router initialize kiya
 
   const [data, setData] = useState({ 
     attendancePercentage: 0, 
@@ -45,7 +47,6 @@ export default function StudentDashboardPage({ params }) {
           safeApiCall(`student/analytics/${studentId}`)
         ]);
 
-        // ✅ Attendance Data Fix: Multiple layers check kar rahe hain taake data miss na ho
         if (statsRes && statsRes.success) {
           const stats = statsRes.data?.data || statsRes.data || statsRes; 
           setData({
@@ -61,13 +62,11 @@ export default function StudentDashboardPage({ params }) {
           });
         }
 
-        // ✅ Courses Data Fix
         if (coursesRes && coursesRes.success) {
           const courseList = coursesRes.data?.data?.courses || coursesRes.data?.courses || coursesRes.courses || [];
           setCourses(Array.isArray(courseList) ? courseList : []);
         }
 
-        // ✅ Analytics Data Fix
         if (analyticsRes && analyticsRes.success) {
           const analyticData = analyticsRes.data?.data || analyticsRes.data || analyticsRes;
           setAnalytics({
@@ -86,6 +85,11 @@ export default function StudentDashboardPage({ params }) {
 
     fetchDashboardData();
   }, [studentId]);
+
+  // ✅ Click Handler: Course detail par bhejne ke liye
+  const handleCourseClick = (courseId) => {
+    router.push(`/dashboard/student/course/${courseId}`);
+  };
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-[#0a0f1c]">
@@ -184,13 +188,18 @@ export default function StudentDashboardPage({ params }) {
         {courses.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {courses.map((course, index) => (
-              <div key={course.id || index} className="group bg-[#161d2f] p-8 rounded-[2.5rem] border border-white/5 hover:border-green-500/40 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)] relative overflow-hidden">
+              <div 
+                key={course.id || index} 
+                onClick={() => handleCourseClick(course.id)} // ✅ Clickable banaya
+                className="group bg-[#161d2f] p-8 rounded-[2.5rem] border border-white/5 hover:border-green-500/40 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)] relative overflow-hidden cursor-pointer active:scale-95"
+              >
                 <div className="absolute -top-4 -right-4 p-4 opacity-[0.03] group-hover:opacity-[0.08] transition-all duration-700 group-hover:rotate-12">
                     <GraduationCap size={120} />
                 </div>
                 <div className="relative z-10">
                   <div className="flex justify-between items-start">
                     <span className="text-[9px] font-black bg-green-500/10 text-green-500 px-3 py-1 rounded-full uppercase tracking-[0.2em] border border-green-500/10">Active</span>
+                    <ArrowRight className="text-white/20 group-hover:text-green-500 transition-colors transform group-hover:translate-x-2" size={20} />
                   </div>
                   <h3 className="font-black text-white text-xl mt-6 uppercase tracking-tighter leading-tight group-hover:text-green-400 transition-colors">
                     {course.subject_name || course.title || "General Subject"}
@@ -217,6 +226,7 @@ export default function StudentDashboardPage({ params }) {
   );
 }
 
+// StatWidget function remains the same...
 function StatWidget({icon, label, value, color, progress, subText}) {
   const colors = {
     green: "text-green-500 bg-green-500/5 border-green-500/10",
