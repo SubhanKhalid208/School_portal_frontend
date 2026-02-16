@@ -1,11 +1,12 @@
 'use client'
 import { useEffect, useState, use } from 'react'; 
 import { toast } from 'react-hot-toast';
-import { BookOpen, GraduationCap, TrendingUp, CheckCircle, Calendar, Info, MapPin } from 'lucide-react';
+import { BookOpen, GraduationCap, TrendingUp, CheckCircle, Calendar, Info, MapPin, Contact2 } from 'lucide-react';
 import { safeApiCall } from '@/app/utils/api'; 
 
 import QuizProgressChart from './_components/QuizProgressChart';
 import AttendanceBarChart from './_components/AttendanceBarChart';
+import StudentIDCard from '@/components/StudentIDCard';
 
 export default function StudentDashboardPage({ params }) {
   const resolvedParams = use(params);
@@ -20,6 +21,9 @@ export default function StudentDashboardPage({ params }) {
   const [courses, setCourses] = useState([]); 
   const [loading, setLoading] = useState(true);
   const [analytics, setAnalytics] = useState({ quizTrends: [], attendanceTrends: [] });
+  
+  const [isCardOpen, setIsCardOpen] = useState(false);
+  const [userData, setUserData] = useState(null);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -41,29 +45,34 @@ export default function StudentDashboardPage({ params }) {
           safeApiCall(`student/analytics/${studentId}`)
         ]);
 
-        // ✅ FIXED: Attendance Data - Checking nested data structure
+        // ✅ Attendance Data Fix: Multiple layers check kar rahe hain taake data miss na ho
         if (statsRes && statsRes.success) {
-          // safeApiCall often returns { success: true, data: { success: true, data: { ... } } }
           const stats = statsRes.data?.data || statsRes.data || statsRes; 
           setData({
             attendancePercentage: stats.attendancePercentage ?? 0,
             totalPresent: stats.totalPresent ?? 0,
             totalDays: stats.totalDays ?? 0
           });
+          
+          setUserData({
+            id: studentId,
+            name: stats.studentName || stats.name || "Muhammad Ahmed", 
+            profile_pic: stats.profile_pic || stats.image || null
+          });
         }
 
-        // ✅ FIXED: Courses Data
+        // ✅ Courses Data Fix
         if (coursesRes && coursesRes.success) {
           const courseList = coursesRes.data?.data?.courses || coursesRes.data?.courses || coursesRes.courses || [];
           setCourses(Array.isArray(courseList) ? courseList : []);
         }
 
-        // ✅ FIXED: Analytics Data
+        // ✅ Analytics Data Fix
         if (analyticsRes && analyticsRes.success) {
           const analyticData = analyticsRes.data?.data || analyticsRes.data || analyticsRes;
           setAnalytics({
-            quizTrends: analyticData.quizTrends || [],
-            attendanceTrends: analyticData.attendanceTrends || []
+            quizTrends: Array.isArray(analyticData.quizTrends) ? analyticData.quizTrends : [],
+            attendanceTrends: Array.isArray(analyticData.attendanceTrends) ? analyticData.attendanceTrends : []
           });
         }
 
@@ -91,6 +100,7 @@ export default function StudentDashboardPage({ params }) {
 
   return (
     <div className="p-6 max-w-7xl mx-auto text-white min-h-screen selection:bg-green-500/30">
+      
       {/* Welcome Header */}
       <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -102,11 +112,28 @@ export default function StudentDashboardPage({ params }) {
             <p className="text-[10px] font-black uppercase tracking-[0.2em]">Lahore Education Hub | ID: {studentId}</p>
           </div>
         </div>
-        <div className="bg-[#161d2f] px-6 py-4 rounded-[2rem] border border-white/5 shadow-2xl backdrop-blur-sm">
-            <p className="text-[9px] text-gray-500 font-black uppercase tracking-[0.3em] mb-1">Current Session</p>
-            <p className="text-sm font-black text-green-400 italic">2025 - 2026 Academic Year</p>
+        
+        <div className="flex items-center gap-4">
+            <button 
+              onClick={() => setIsCardOpen(true)}
+              className="flex items-center gap-2 bg-white/5 hover:bg-green-500/10 border border-white/10 hover:border-green-500/50 px-5 py-3 rounded-2xl transition-all group shadow-xl"
+            >
+              <Contact2 className="text-green-500 group-hover:scale-110 transition-transform" size={20} />
+              <span className="text-[10px] font-black uppercase tracking-widest">View ID Card</span>
+            </button>
+
+            <div className="bg-[#161d2f] px-6 py-4 rounded-[2rem] border border-white/5 shadow-2xl backdrop-blur-sm hidden sm:block">
+                <p className="text-[9px] text-gray-500 font-black uppercase tracking-[0.3em] mb-1">Current Session</p>
+                <p className="text-sm font-black text-green-400 italic">2025 - 2026 Academic Year</p>
+            </div>
         </div>
       </div>
+
+      <StudentIDCard 
+        user={userData} 
+        isOpen={isCardOpen} 
+        onClose={() => setIsCardOpen(false)} 
+      />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
@@ -133,7 +160,7 @@ export default function StudentDashboardPage({ params }) {
         />
       </div>
 
-      {/* Analytics */}
+      {/* Performance Analytics */}
       <div className="mb-16">
         <div className="flex items-center gap-3 mb-8">
             <TrendingUp className="text-green-500" size={24} />
@@ -145,7 +172,7 @@ export default function StudentDashboardPage({ params }) {
         </div>
       </div>
 
-      {/* Courses */}
+      {/* Courses Section */}
       <div className="mb-10">
         <div className="flex items-center gap-3 mb-8">
           <div className="p-3 bg-green-500/10 rounded-2xl border border-green-500/20">
