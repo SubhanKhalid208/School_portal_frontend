@@ -3,8 +3,9 @@ import { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { 
   ClipboardList, Users, Eye, X, Award, Calendar, 
-  BookOpen, Trash2, List, AlertTriangle 
+  BookOpen, Trash2, List, AlertTriangle, LogOut // ✅ LogOut import kiya
 } from 'lucide-react';
+import Cookies from 'js-cookie'; // ✅ Cookies import kiya
 
 // ✅ Redux Hooks Import
 import { 
@@ -156,6 +157,16 @@ export default function TeacherDashboard() {
 
   const myCourses = coursesData?.data || [];
 
+  // ✅ Logout Handler
+  const handleLogout = () => {
+    Cookies.remove('userId');
+    Cookies.remove('token'); 
+    Cookies.remove('role');
+    localStorage.clear();
+    toast.success("Logging out from Teacher Panel...");
+    window.location.href = '/login';
+  };
+
   const handleDeleteQuizAction = async (quizId) => {
     if (!window.confirm("WARNING: Poora quiz delete kar dein?")) return;
     try {
@@ -189,6 +200,25 @@ export default function TeacherDashboard() {
     <div className="p-6 max-w-7xl mx-auto text-white space-y-10">
       {selectedQuizId && <ResultsModal quizId={selectedQuizId} onClose={() => setSelectedQuizId(null)} />}
       {viewQuestionsId && <QuestionsModal quizId={viewQuestionsId} onClose={() => setViewQuestionsId(null)} />}
+
+      {/* Header with Title and Logout */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+        <div>
+          <h1 className="text-3xl font-black italic uppercase tracking-tighter">
+            Teacher <span className="text-blue-500">Panel</span>
+          </h1>
+          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.3em]">Lahore Portal | Management Dashboard</p>
+        </div>
+        
+        {/* ✅ Integrated Logout Button */}
+        <button 
+          onClick={handleLogout}
+          className="flex items-center gap-2 bg-red-500/10 hover:bg-red-500 border border-red-500/20 hover:border-red-600 px-6 py-3 rounded-2xl transition-all group shadow-xl"
+        >
+          <LogOut className="text-red-500 group-hover:text-white transition-transform" size={18} />
+          <span className="text-[10px] font-black uppercase tracking-widest group-hover:text-white text-red-500">Logout</span>
+        </button>
+      </div>
 
       {/* Stats Section */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

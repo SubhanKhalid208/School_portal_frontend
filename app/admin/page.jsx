@@ -1,8 +1,12 @@
 'use client'
 import { useEffect, useState, useRef } from 'react';
 import { useDispatch } from 'react-redux';
-import { Users, BookOpen, GraduationCap, Trash2, Edit, Search, X, Upload, FileUp, ShieldCheck, UserPlus, Layers } from 'lucide-react';
+import { 
+  Users, BookOpen, GraduationCap, Trash2, Edit, Search, X, 
+  Upload, FileUp, ShieldCheck, UserPlus, Layers, LogOut // ✅ LogOut import kiya
+} from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import Cookies from 'js-cookie'; // ✅ Cookies import kiya
 import { 
   useGetAdminStatsQuery, 
   useGetAdminUsersQuery,
@@ -42,6 +46,16 @@ export default function AdminDashboard() {
 
   const users = usersData?.data && Array.isArray(usersData.data) ? usersData.data : [];
   const loading = statsLoading || usersLoading;
+
+  // ✅ Logout Handler
+  const handleLogout = () => {
+    Cookies.remove('userId');
+    Cookies.remove('token'); 
+    Cookies.remove('role');
+    localStorage.clear();
+    toast.success("Admin Session Closed.");
+    window.location.href = '/login';
+  };
 
   const handleBulkUpload = async (e) => {
     const file = e.target.files[0];
@@ -116,7 +130,7 @@ export default function AdminDashboard() {
         name: user.name || '', 
         email: user.email || '', 
         role: user.role || 'student', 
-        password: '', // Edit mode mein password reset nahi hoga
+        password: '', 
         profile_pic: user.profile_pic || ''
       });
     } else {
@@ -142,7 +156,7 @@ export default function AdminDashboard() {
     <div className="p-4 md:p-10 max-w-7xl mx-auto min-h-screen bg-[#070a13] text-white font-sans selection:bg-green-500/30">
       
       {/* --- HEADER --- */}
-      <div className="mb-12 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-[#0f172a]/50 p-6 rounded-[2rem] border border-white/5 backdrop-blur-md">
+      <div className="mb-12 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-[#0f172a]/50 p-6 rounded-[2rem] border border-white/5 backdrop-blur-md shadow-2xl">
         <div className="flex items-center gap-4">
           <div className="bg-gradient-to-br from-green-400 to-emerald-600 p-3 rounded-2xl shadow-lg shadow-green-500/20">
             <ShieldCheck size={32} className="text-black" />
@@ -153,7 +167,7 @@ export default function AdminDashboard() {
           </div>
         </div>
         
-        <div className="flex w-full lg:w-auto gap-3">
+        <div className="flex w-full lg:w-auto gap-3 items-center">
           <label className={`flex-1 lg:flex-none cursor-pointer group relative overflow-hidden ${bulkLoading ? 'bg-gray-800' : 'bg-white/5 hover:bg-white/10'} px-6 py-3 rounded-2xl border border-white/10 transition-all text-center`}>
             <div className="flex items-center justify-center gap-2 font-bold text-sm">
               <FileUp size={18} className="text-blue-400 group-hover:-translate-y-1 transition-transform" />
@@ -164,6 +178,15 @@ export default function AdminDashboard() {
           
           <button onClick={() => openModal()} className="flex-1 lg:flex-none bg-green-500 hover:bg-green-400 text-black px-8 py-3 rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-xl shadow-green-500/10 active:scale-95 transition-all">
             <UserPlus size={18}/> <span>ADD USER</span>
+          </button>
+
+          {/* ✅ Logout Button Added to Header */}
+          <button 
+            onClick={handleLogout}
+            className="p-3 bg-red-500/10 hover:bg-red-500 border border-red-500/20 hover:border-red-600 rounded-2xl transition-all group"
+            title="Logout"
+          >
+            <LogOut size={22} className="text-red-500 group-hover:text-white" />
           </button>
         </div>
       </div>
@@ -279,7 +302,6 @@ export default function AdminDashboard() {
                 <InputField label="Name" value={formData.name} onChange={(v) => setFormData({...formData, name: v})} />
                 <InputField label="Email" type="email" value={formData.email} onChange={(v) => setFormData({...formData, email: v})} />
                 
-                {/* Sirf naye user ke liye password field dikhegi */}
                 {!editingUserId && (
                    <InputField 
                     label="Set Password" 

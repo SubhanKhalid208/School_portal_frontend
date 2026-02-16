@@ -1,9 +1,13 @@
 'use client'
 import { useEffect, useState, use } from 'react'; 
-import { useRouter } from 'next/navigation'; // ✅ Navigation ke liye add kiya
+import { useRouter } from 'next/navigation'; 
 import { toast } from 'react-hot-toast';
-import { BookOpen, GraduationCap, TrendingUp, CheckCircle, Calendar, Info, MapPin, Contact2, ArrowRight } from 'lucide-react';
+import { 
+  BookOpen, GraduationCap, TrendingUp, CheckCircle, 
+  Calendar, Info, MapPin, Contact2, ArrowRight, LogOut 
+} from 'lucide-react'; // ✅ LogOut icon add kiya
 import { safeApiCall } from '@/app/utils/api'; 
+import Cookies from 'js-cookie'; // ✅ Cookies handling ke liye
 
 import QuizProgressChart from './_components/QuizProgressChart';
 import AttendanceBarChart from './_components/AttendanceBarChart';
@@ -12,7 +16,7 @@ import StudentIDCard from '@/components/StudentIDCard';
 export default function StudentDashboardPage({ params }) {
   const resolvedParams = use(params);
   const studentId = resolvedParams.id;
-  const router = useRouter(); // ✅ Router initialize kiya
+  const router = useRouter();
 
   const [data, setData] = useState({ 
     attendancePercentage: 0, 
@@ -27,6 +31,16 @@ export default function StudentDashboardPage({ params }) {
   const [isCardOpen, setIsCardOpen] = useState(false);
   const [userData, setUserData] = useState(null);
 
+  // ✅ Logout Handler: Sidebar wala logic yahan integrate kiya
+  const handleLogout = () => {
+    Cookies.remove('userId');
+    Cookies.remove('token'); 
+    Cookies.remove('role');
+    localStorage.clear();
+    toast.success("Logging out of Lahore Portal...");
+    window.location.href = '/login';
+  };
+
   useEffect(() => {
     const fetchDashboardData = async () => {
       if (!studentId) return;
@@ -38,6 +52,7 @@ export default function StudentDashboardPage({ params }) {
         if (!token) {
           toast.error("Session expired. Please login again.");
           setLoading(false);
+          router.push('/login');
           return;
         }
 
@@ -84,9 +99,8 @@ export default function StudentDashboardPage({ params }) {
     };
 
     fetchDashboardData();
-  }, [studentId]);
+  }, [studentId, router]);
 
-  // ✅ Click Handler: Course detail par bhejne ke liye
   const handleCourseClick = (courseId) => {
     router.push(`/dashboard/student/course/${courseId}`);
   };
@@ -117,7 +131,8 @@ export default function StudentDashboardPage({ params }) {
           </div>
         </div>
         
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+            {/* View ID Card Button */}
             <button 
               onClick={() => setIsCardOpen(true)}
               className="flex items-center gap-2 bg-white/5 hover:bg-green-500/10 border border-white/10 hover:border-green-500/50 px-5 py-3 rounded-2xl transition-all group shadow-xl"
@@ -126,7 +141,16 @@ export default function StudentDashboardPage({ params }) {
               <span className="text-[10px] font-black uppercase tracking-widest">View ID Card</span>
             </button>
 
-            <div className="bg-[#161d2f] px-6 py-4 rounded-[2rem] border border-white/5 shadow-2xl backdrop-blur-sm hidden sm:block">
+            {/* ✅ Integrated Logout Button */}
+            <button 
+              onClick={handleLogout}
+              className="flex items-center gap-2 bg-red-500/10 hover:bg-red-500 border border-red-500/20 hover:border-red-600 px-5 py-3 rounded-2xl transition-all group shadow-xl"
+            >
+              <LogOut className="text-red-500 group-hover:text-white group-hover:scale-110 transition-transform" size={20} />
+              <span className="text-[10px] font-black uppercase tracking-widest group-hover:text-white text-red-500">Logout</span>
+            </button>
+
+            <div className="bg-[#161d2f] px-6 py-4 rounded-[2rem] border border-white/5 shadow-2xl backdrop-blur-sm hidden lg:block">
                 <p className="text-[9px] text-gray-500 font-black uppercase tracking-[0.3em] mb-1">Current Session</p>
                 <p className="text-sm font-black text-green-400 italic">2025 - 2026 Academic Year</p>
             </div>
@@ -139,7 +163,7 @@ export default function StudentDashboardPage({ params }) {
         onClose={() => setIsCardOpen(false)} 
       />
 
-      {/* Stats Cards */}
+      {/* Stats Cards Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
         <StatWidget 
           icon={<TrendingUp size={40}/>} 
@@ -190,7 +214,7 @@ export default function StudentDashboardPage({ params }) {
             {courses.map((course, index) => (
               <div 
                 key={course.id || index} 
-                onClick={() => handleCourseClick(course.id)} // ✅ Clickable banaya
+                onClick={() => handleCourseClick(course.id)} 
                 className="group bg-[#161d2f] p-8 rounded-[2.5rem] border border-white/5 hover:border-green-500/40 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)] relative overflow-hidden cursor-pointer active:scale-95"
               >
                 <div className="absolute -top-4 -right-4 p-4 opacity-[0.03] group-hover:opacity-[0.08] transition-all duration-700 group-hover:rotate-12">
@@ -226,7 +250,6 @@ export default function StudentDashboardPage({ params }) {
   );
 }
 
-// StatWidget function remains the same...
 function StatWidget({icon, label, value, color, progress, subText}) {
   const colors = {
     green: "text-green-500 bg-green-500/5 border-green-500/10",

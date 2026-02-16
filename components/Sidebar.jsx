@@ -6,7 +6,6 @@ import {
   LayoutDashboard, 
   Users, 
   ClipboardCheck, 
-  LogOut, 
   ChevronLeft, 
   ChevronRight, 
   FileText, 
@@ -34,6 +33,7 @@ export default function Sidebar({ role, onCollapseChange }) {
     if (onCollapseChange) onCollapseChange(isCollapsed);
   }, [isCollapsed, onCollapseChange]);
 
+  // Yeh logic ab aap dashboard header mein use karenge
   const onLogout = () => {
     Cookies.remove('userId');
     Cookies.remove('token'); 
@@ -101,8 +101,6 @@ export default function Sidebar({ role, onCollapseChange }) {
       {/* Navigation Links */}
       <nav className="flex-1 space-y-2 overflow-y-auto custom-scrollbar">
         {currentMenu.map((item) => {
-          // Improved Active State: Check if current path starts with item path
-          // Taake student dashboard ke andar mazeed pages par bhi link active rahe
           const isActive = item.path !== '#' && (pathname === item.path || pathname.startsWith(item.path));
           const isDisabled = item.path === '#';
 
@@ -130,14 +128,7 @@ export default function Sidebar({ role, onCollapseChange }) {
         })}
       </nav>
 
-      {/* Logout Button */}
-      <button 
-        onClick={onLogout} 
-        className={`flex items-center space-x-3 p-3 text-red-400 hover:bg-red-500/10 rounded-xl transition-colors mt-auto w-full font-bold text-sm ${isCollapsed ? 'justify-center' : ''}`}
-      >
-        <LogOut size={20}/>
-        {!isCollapsed && <span>Logout</span>}
-      </button>
+      {/* Logout button yahan se delete kar diya gaya hai */}
     </div>
   );
 }
