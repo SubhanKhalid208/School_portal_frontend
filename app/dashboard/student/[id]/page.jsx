@@ -4,12 +4,10 @@ import { toast } from 'react-hot-toast';
 import { BookOpen, GraduationCap, TrendingUp, CheckCircle, Calendar, Info, MapPin } from 'lucide-react';
 import { safeApiCall } from '@/app/utils/api'; 
 
-// Components path verified from your structure
 import QuizProgressChart from './_components/QuizProgressChart';
 import AttendanceBarChart from './_components/AttendanceBarChart';
 
 export default function StudentDashboardPage({ params }) {
-  // ✅ Next.js 15+ requirement: Unwrap params correctly
   const resolvedParams = use(params);
   const studentId = resolvedParams.id;
 
@@ -37,39 +35,36 @@ export default function StudentDashboardPage({ params }) {
           return;
         }
 
-        // ✅ FIXED: Using direct template literals for cleaner path handling
         const [statsRes, coursesRes, analyticsRes] = await Promise.all([
           safeApiCall(`student/attendance/student/${studentId}`),
           safeApiCall(`student/my-courses/${studentId}`),
           safeApiCall(`student/analytics/${studentId}`)
         ]);
 
-        // Attendance Data Handle
+        // ✅ FIXED: Attendance Data - Checking nested data structure
         if (statsRes && statsRes.success) {
-          // statsRes.data check as per your latest safeApiCall structure
-          const stats = statsRes.data || statsRes; 
+          // safeApiCall often returns { success: true, data: { success: true, data: { ... } } }
+          const stats = statsRes.data?.data || statsRes.data || statsRes; 
           setData({
-            attendancePercentage: stats.attendancePercentage || 0,
-            totalPresent: stats.totalPresent || 0,
-            totalDays: stats.totalDays || 0
+            attendancePercentage: stats.attendancePercentage ?? 0,
+            totalPresent: stats.totalPresent ?? 0,
+            totalDays: stats.totalDays ?? 0
           });
         }
 
-        // ✅ FIXED: Courses Data Handle - Checking for .data.courses or direct courses
+        // ✅ FIXED: Courses Data
         if (coursesRes && coursesRes.success) {
-          const courseList = coursesRes.data?.courses || coursesRes.courses || coursesRes.data || [];
+          const courseList = coursesRes.data?.data?.courses || coursesRes.data?.courses || coursesRes.courses || [];
           setCourses(Array.isArray(courseList) ? courseList : []);
         }
 
-        // ✅ FIXED: Analytics Data Handle
+        // ✅ FIXED: Analytics Data
         if (analyticsRes && analyticsRes.success) {
-          const analyticData = analyticsRes.data || analyticsRes;
+          const analyticData = analyticsRes.data?.data || analyticsRes.data || analyticsRes;
           setAnalytics({
             quizTrends: analyticData.quizTrends || [],
             attendanceTrends: analyticData.attendanceTrends || []
           });
-        } else {
-          setAnalytics({ quizTrends: [], attendanceTrends: [] });
         }
 
       } catch (err) {
@@ -118,39 +113,39 @@ export default function StudentDashboardPage({ params }) {
         <StatWidget 
           icon={<TrendingUp size={40}/>} 
           label="Overall Attendance" 
-          value={`${data?.attendancePercentage || 0}%`} 
+          value={`${data.attendancePercentage}%`} 
           color="green" 
-          progress={data?.attendancePercentage || 0}
+          progress={data.attendancePercentage}
         />
         <StatWidget 
           icon={<CheckCircle size={40}/>} 
           label="Present Days" 
-          value={data?.totalPresent || 0} 
+          value={data.totalPresent} 
           color="blue" 
           subText="Days attended this month"
         />
         <StatWidget 
           icon={<Calendar size={40}/>} 
           label="Total Academic Days" 
-          value={data?.totalDays || 0} 
+          value={data.totalDays} 
           color="purple" 
           subText="Working sessions in portal"
         />
       </div>
 
-      {/* Performance Analytics Section */}
+      {/* Analytics */}
       <div className="mb-16">
         <div className="flex items-center gap-3 mb-8">
             <TrendingUp className="text-green-500" size={24} />
             <h2 className="text-2xl font-black italic uppercase tracking-tighter text-white">Performance Analytics</h2>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <QuizProgressChart data={analytics?.quizTrends || []} />
-            <AttendanceBarChart data={analytics?.attendanceTrends || []} />
+            <QuizProgressChart data={analytics.quizTrends} />
+            <AttendanceBarChart data={analytics.attendanceTrends} />
         </div>
       </div>
 
-      {/* Courses Section */}
+      {/* Courses */}
       <div className="mb-10">
         <div className="flex items-center gap-3 mb-8">
           <div className="p-3 bg-green-500/10 rounded-2xl border border-green-500/20">
@@ -175,7 +170,7 @@ export default function StudentDashboardPage({ params }) {
                   </h3>
                   <div className="flex items-center gap-2 mt-4 text-gray-500">
                     <div className="h-[1px] w-6 bg-gray-800"></div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest">Code: LP-{studentId?.slice(-3)}-{index + 101}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest">Code: LP-{String(studentId).slice(-3)}-{index + 101}</p>
                   </div>
                 </div>
               </div>
@@ -202,7 +197,7 @@ function StatWidget({icon, label, value, color, progress, subText}) {
     purple: "text-purple-500 bg-purple-500/5 border-purple-500/10"
   };
 
-  const currentTheme = colors[color];
+  const currentTheme = colors[color] || colors.green;
   const textColor = currentTheme.split(' ')[0];
 
   return (
@@ -220,7 +215,7 @@ function StatWidget({icon, label, value, color, progress, subText}) {
             <span className="text-[8px] font-black uppercase text-green-500 tracking-widest">{progress}%</span>
           </div>
           <div className="w-full bg-black/40 h-1.5 rounded-full overflow-hidden border border-white/5">
-            <div className="bg-green-500 h-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(34,197,94,0.5)]" style={{ width: `${progress}%` }}></div>
+            <div className="bg-green-500 h-full transition-all duration-1000 ease-out" style={{ width: `${progress}%` }}></div>
           </div>
         </div>
       ) : (
