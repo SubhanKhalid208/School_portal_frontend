@@ -3,9 +3,13 @@ import { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { 
   ClipboardList, Users, Eye, X, Award, Calendar, 
-  BookOpen, Trash2, List, AlertTriangle, LogOut // ✅ LogOut import kiya
+  BookOpen, Trash2, List, AlertTriangle, LogOut,
+  UserRound // ✅ ID Card icon ke liye
 } from 'lucide-react';
-import Cookies from 'js-cookie'; // ✅ Cookies import kiya
+import Cookies from 'js-cookie'; 
+
+// ✅ IdentityCard Component Import (Path apne mutabiq check karlein)
+import IdentityCard from '@/components/StudentIDCard'; 
 
 // ✅ Redux Hooks Import
 import { 
@@ -152,6 +156,7 @@ export default function TeacherDashboard() {
   const [selectedQuizId, setSelectedQuizId] = useState(null); 
   const [viewQuestionsId, setViewQuestionsId] = useState(null); 
   const [showModal, setShowModal] = useState(false);
+  const [isIdCardOpen, setIsIdCardOpen] = useState(false); // ✅ ID Card State
   const [editingCourse, setEditingCourse] = useState(null);
   const [formData, setFormData] = useState({ title: '', description: '' });
 
@@ -200,8 +205,19 @@ export default function TeacherDashboard() {
     <div className="p-6 max-w-7xl mx-auto text-white space-y-10">
       {selectedQuizId && <ResultsModal quizId={selectedQuizId} onClose={() => setSelectedQuizId(null)} />}
       {viewQuestionsId && <QuestionsModal quizId={viewQuestionsId} onClose={() => setViewQuestionsId(null)} />}
+      
+      {/* ✅ ID Card Component Integration */}
+      <IdentityCard 
+        user={{
+          id: Cookies.get('userId'),
+          name: statsData?.teacherName,
+          role: 'teacher' 
+        }}
+        isOpen={isIdCardOpen}
+        onClose={() => setIsIdCardOpen(false)}
+      />
 
-      {/* Header with Title and Logout */}
+      {/* Header with Title and Buttons */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
         <div>
           <h1 className="text-3xl font-black italic uppercase tracking-tighter">
@@ -210,14 +226,25 @@ export default function TeacherDashboard() {
           <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.3em]">Lahore Portal | Management Dashboard</p>
         </div>
         
-        {/* ✅ Integrated Logout Button */}
-        <button 
-          onClick={handleLogout}
-          className="flex items-center gap-2 bg-red-500/10 hover:bg-red-500 border border-red-500/20 hover:border-red-600 px-6 py-3 rounded-2xl transition-all group shadow-xl"
-        >
-          <LogOut className="text-red-500 group-hover:text-white transition-transform" size={18} />
-          <span className="text-[10px] font-black uppercase tracking-widest group-hover:text-white text-red-500">Logout</span>
-        </button>
+        <div className="flex items-center gap-3">
+          {/* ✅ ID Card Button */}
+          <button 
+            onClick={() => setIsIdCardOpen(true)}
+            className="flex items-center gap-2 bg-green-500/10 hover:bg-green-500 border border-green-500/20 px-6 py-3 rounded-2xl transition-all group shadow-xl"
+          >
+            <UserRound className="text-green-500 group-hover:text-white transition-transform" size={18} />
+            <span className="text-[10px] font-black uppercase tracking-widest group-hover:text-white text-green-500">My ID Card</span>
+          </button>
+
+          {/* ✅ Integrated Logout Button */}
+          <button 
+            onClick={handleLogout}
+            className="flex items-center gap-2 bg-red-500/10 hover:bg-red-500 border border-red-500/20 hover:border-red-600 px-6 py-3 rounded-2xl transition-all group shadow-xl"
+          >
+            <LogOut className="text-red-500 group-hover:text-white transition-transform" size={18} />
+            <span className="text-[10px] font-black uppercase tracking-widest group-hover:text-white text-red-500">Logout</span>
+          </button>
+        </div>
       </div>
 
       {/* Stats Section */}

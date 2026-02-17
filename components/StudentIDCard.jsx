@@ -1,18 +1,20 @@
 import React, { useState } from 'react';
 
-const StudentIDCard = ({ user, isOpen, onClose }) => {
+const IdentityCard = ({ user, isOpen, onClose }) => {
   const [isUploading, setIsUploading] = useState(false);
 
   if (!isOpen) return null;
 
-  const studentData = user?.user || user; 
-  const studentName = studentData?.name || "Student";
-  const studentId = studentData?.id || user?.id || '32';
+  // Role aur Data extract karna
+  const userData = user?.user || user; 
+  const userName = userData?.name || "User";
+  const userId = userData?.id || user?.id || '00';
+  const role = user?.role?.toLowerCase() || 'student'; // 'teacher' ya 'student'
 
   const getProfilePic = () => {
-    const rawPic = studentData?.profile_pic || studentData?.image;
+    const rawPic = userData?.profile_pic || userData?.image;
     if (!rawPic) {
-      return `https://ui-avatars.com/api/?name=${studentName}&background=22c55e&color=fff&size=128`;
+      return `https://ui-avatars.com/api/?name=${userName}&background=22c55e&color=fff&size=128`;
     }
     if (rawPic.startsWith('http')) return rawPic;
 
@@ -34,7 +36,12 @@ const StudentIDCard = ({ user, isOpen, onClose }) => {
       const token = localStorage.getItem('token');
       const backendURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
       
-      const response = await fetch(`${backendURL}/api/student/upload-profile-pic/${studentId}`, {
+      // Role ke mutabiq endpoint select karna
+      const endpoint = role === 'teacher' 
+        ? `/api/teacher/upload-profile-pic/${userId}` 
+        : `/api/student/upload-profile-pic/${userId}`;
+
+      const response = await fetch(`${backendURL}${endpoint}`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData,
@@ -42,8 +49,8 @@ const StudentIDCard = ({ user, isOpen, onClose }) => {
 
       const data = await response.json();
       if (data.success) {
-        alert("Picture update ho gayi!");
-        window.location.reload(); // Data refresh karne ke liye
+        alert("Profile picture updated successfully!");
+        window.location.reload(); 
       } else {
         alert(data.error || "Upload failed");
       }
@@ -59,29 +66,31 @@ const StudentIDCard = ({ user, isOpen, onClose }) => {
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center z-[9999]">
       <div className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-2 border-green-500/50 rounded-3xl p-8 w-80 shadow-[0_0_50px_-12px_rgba(34,197,94,0.5)] overflow-hidden">
         
+        {/* Header Section */}
         <div className="text-center mb-6">
           <div className="bg-green-500 text-slate-900 font-black text-[10px] py-1 px-3 rounded-full inline-block mb-2 tracking-widest">
             LAHORE EDUCATION HUB
           </div>
-          <h3 className="text-white font-bold text-[11px] tracking-[0.2em] opacity-80 uppercase">Student Identity Card</h3>
+          <h3 className="text-white font-bold text-[11px] tracking-[0.2em] opacity-80 uppercase">
+            {role === 'teacher' ? 'Teacher Identity Card' : 'Student Identity Card'}
+          </h3>
         </div>
 
+        {/* Profile Picture Section */}
         <div className="flex justify-center mb-6">
           <div className="relative group">
-            {/* Image Container */}
             <div className={`w-32 h-32 rounded-2xl border-2 border-green-500 p-1 bg-slate-800 overflow-hidden rotate-2 group-hover:rotate-0 transition-transform duration-500 shadow-lg ${isUploading ? 'opacity-50' : ''}`}>
               <img 
                 src={getProfilePic()} 
-                alt={studentName} 
+                alt={userName} 
                 className="w-full h-full rounded-xl object-cover"
                 onError={(e) => {
                   e.target.onerror = null; 
-                  e.target.src = `https://ui-avatars.com/api/?name=${studentName}&background=22c55e&color=fff`;
+                  e.target.src = `https://ui-avatars.com/api/?name=${userName}&background=22c55e&color=fff`;
                 }}
               />
             </div>
 
-            {/* Change Photo Overlay */}
             <label className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-2xl rotate-2 group-hover:rotate-0">
               <span className="text-[10px] text-white font-bold uppercase tracking-tighter">
                 {isUploading ? 'Uploading...' : 'Change Photo'}
@@ -93,12 +102,13 @@ const StudentIDCard = ({ user, isOpen, onClose }) => {
           </div>
         </div>
 
+        {/* Info Section */}
         <div className="text-center relative z-10">
           <h2 className="text-2xl font-black text-white uppercase tracking-tighter leading-none mb-1">
-            {studentName} 
+            {userName} 
           </h2>
           <p className="text-green-400 font-mono font-bold text-lg tracking-widest">
-            #STU-{studentId}
+            #{role === 'teacher' ? 'TCH' : 'STU'}-{userId}
           </p>
           
           <div className="mt-6 grid grid-cols-2 gap-4 pt-4 border-t border-white/10 text-[10px]">
@@ -107,12 +117,15 @@ const StudentIDCard = ({ user, isOpen, onClose }) => {
               <p className="text-white font-medium uppercase">Lahore Main</p>
             </div>
             <div className="text-right">
-              <p className="text-gray-500 font-bold uppercase tracking-tighter">Status</p>
-              <p className="text-green-500 font-black italic underline decoration-green-500/20">VERIFIED ✅</p>
+              <p className="text-gray-500 font-bold uppercase tracking-tighter">Designation</p>
+              <p className="text-green-500 font-black italic underline decoration-green-500/20 uppercase">
+                {role === 'teacher' ? 'FACULTY ✅' : 'VERIFIED ✅'}
+              </p>
             </div>
           </div>
         </div>
 
+        {/* Close Button */}
         <button 
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-full w-8 h-8 flex items-center justify-center transition-all hover:rotate-90"
@@ -120,6 +133,7 @@ const StudentIDCard = ({ user, isOpen, onClose }) => {
           ✕
         </button>
 
+        {/* Background Glows */}
         <div className="absolute -top-10 -left-10 w-32 h-32 bg-green-500/5 rounded-full blur-3xl"></div>
         <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-green-500/10 rounded-full blur-3xl"></div>
       </div>
@@ -127,4 +141,4 @@ const StudentIDCard = ({ user, isOpen, onClose }) => {
   );
 };
 
-export default StudentIDCard;
+export default IdentityCard;
