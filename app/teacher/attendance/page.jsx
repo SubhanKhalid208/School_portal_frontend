@@ -65,7 +65,7 @@ export default function AttendancePage() {
       <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black text-white italic uppercase tracking-tighter">Attendance Panel</h1>
-          <p className="text-gray-400 italic font-medium">As-Salam-u-Alaikum Muhammad Ahmed! Aaj ki attendance lagayein.</p>
+          <p className="text-gray-400 italic font-medium">Assalam o Alaikum subhan aj ke attendence laga sakta ha ab .</p>
         </div>
 
         <div className="flex flex-col gap-1">
