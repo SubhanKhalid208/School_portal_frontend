@@ -22,13 +22,11 @@ export default function AdminLayout({ children }) {
   return (
     <div className="flex min-h-screen bg-[#0a0f1c]">
       <Sidebar role="admin" onCollapseChange={setIsCollapsed} />
-      <main className={`w-full transition-all duration-300 ${
+      <main className={`${
         isMobile 
-          ? 'ml-0 pt-20' 
-          : isCollapsed 
-            ? 'md:ml-20' 
-            : 'md:ml-64'
-      }`}>
+          ? 'w-full pt-20' 
+          : 'flex-1'
+      } transition-all duration-300`}>
         <div className="p-4 md:p-8">
           {children}
         </div>

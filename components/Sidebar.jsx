@@ -120,17 +120,13 @@ export default function Sidebar({ role, onCollapseChange }) {
         />
       )}
 
-      {/* Sidebar - Responsive Position */}
-      <div 
-        className={`h-screen bg-[#161d2f] border-r border-gray-800 flex flex-col p-4 fixed md:static z-50 transition-all duration-300 top-0 left-0 ${
+      {/* Sidebar - Desktop: Static positioning | Mobile: Fixed with slide */}
+      <aside 
+        className={`h-screen bg-[#161d2f] border-r border-gray-800 flex flex-col p-4 transition-all duration-300 ${
           isMobile
-            ? isMobileOpen 
-              ? 'w-64 translate-x-0' 
-              : 'w-64 -translate-x-full'
-            : isCollapsed 
-              ? 'w-20' 
-              : 'w-64'
-        } ${isMobile ? 'md:translate-x-0' : ''}`}
+            ? `fixed top-0 left-0 z-50 w-64 ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}`
+            : `${isCollapsed ? 'w-20' : 'w-64'}`
+        }`}
       >
       {/* Toggle Button - Desktop Only */}
       {!isMobile && (
@@ -181,7 +177,7 @@ export default function Sidebar({ role, onCollapseChange }) {
       </nav>
 
       {/* Logout button yahan se delete kar diya gaya hai */}
-      </div>
+      </aside>
     </>
   );
 }

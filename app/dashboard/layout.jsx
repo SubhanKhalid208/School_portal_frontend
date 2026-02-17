@@ -29,15 +29,13 @@ export default function DashboardLayout({ children }) {
         onCollapseChange={(collapsed) => setIsSidebarCollapsed(collapsed)} 
       />
 
-      {/* Main Content Area: Responsive margin for desktop, full width for mobile */}
+      {/* Main Content Area - Mobile: full width with top padding | Desktop: flex-1 */}
       <main 
-        className={`w-full transition-all duration-300 ease-in-out ${
+        className={`${
           isMobile 
-            ? 'ml-0 pt-20' 
-            : isSidebarCollapsed 
-              ? 'md:ml-20' 
-              : 'md:ml-64'
-        }`}
+            ? 'w-full pt-20' 
+            : 'flex-1'
+        } transition-all duration-300 ease-in-out`}
       >
         <div className="p-4 md:p-8">
           {children}

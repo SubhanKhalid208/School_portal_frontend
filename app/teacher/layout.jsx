@@ -31,13 +31,11 @@ export default function TeacherLayout({ children }) {
 
       {/* Content area jo sidebar ke mutabiq jagah chorega */}
       <main 
-        className={`w-full transition-all duration-300 ease-in-out ${
+        className={`${
           isMobile 
-            ? 'ml-0 pt-20' 
-            : isSidebarCollapsed 
-              ? 'md:ml-20' 
-              : 'md:ml-64'
-        }`}
+            ? 'w-full pt-20' 
+            : 'flex-1'
+        } transition-all duration-300 ease-in-out`}
       >
         <div className="p-4 md:p-8">
           {children}
