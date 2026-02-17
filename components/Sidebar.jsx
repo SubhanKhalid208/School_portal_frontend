@@ -125,17 +125,19 @@ export default function Sidebar({ role, onCollapseChange }) {
         className={`h-screen bg-[#161d2f] border-r border-gray-800 flex flex-col p-4 transition-all duration-300 ${
           isMobile
             ? `fixed top-0 left-0 z-50 w-64 ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}`
-            : `${isCollapsed ? 'w-20' : 'w-64'}`
+            : `relative ${isCollapsed ? 'w-20' : 'w-64'}`
         }`}
       >
       {/* Toggle Button - Desktop Only */}
       {!isMobile && (
-        <button 
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="absolute -right-3 top-10 bg-green-500 rounded-full p-1 text-black hover:scale-110 shadow-lg z-[60]"
-        >
-          {isCollapsed ? <ChevronRight size={16}/> : <ChevronLeft size={16}/>}
-        </button>
+        <div className="absolute -right-3 top-10 z-[60]">
+          <button 
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="bg-green-500 rounded-full p-1 text-black hover:scale-110 shadow-lg hover:bg-green-400 transition-all"
+          >
+            {isCollapsed ? <ChevronRight size={16}/> : <ChevronLeft size={16}/>}
+          </button>
+        </div>
       )}
 
       {/* Logo Section */}
@@ -147,7 +149,7 @@ export default function Sidebar({ role, onCollapseChange }) {
       </div>
 
       {/* Navigation Links */}
-      <nav className="flex-1 space-y-2 overflow-y-auto custom-scrollbar">
+      <nav className="flex-1 space-y-2 overflow-y-auto overflow-x-hidden custom-scrollbar">
         {currentMenu.map((item) => {
           const isActive = item.path !== '#' && (pathname === item.path || pathname.startsWith(item.path));
           const isDisabled = item.path === '#';
