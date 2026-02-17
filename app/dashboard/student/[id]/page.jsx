@@ -117,42 +117,44 @@ export default function StudentDashboardPage({ params }) {
   );
 
   return (
-    <div className="p-6 max-w-7xl mx-auto text-white min-h-screen selection:bg-green-500/30">
+    <div className="p-4 md:p-6 max-w-7xl mx-auto text-white min-h-screen selection:bg-green-500/30">
       
       {/* Welcome Header */}
-      <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="mb-8 md:mb-10 flex flex-col gap-4 md:gap-0">
         <div>
-          <h1 className="text-4xl font-black italic text-white tracking-tighter uppercase">
+          <h1 className="text-3xl md:text-4xl font-black italic text-white tracking-tighter uppercase">
             Student <span className="text-green-500">Dashboard</span>
           </h1>
           <div className="flex items-center gap-2 text-gray-500 mt-1">
-            <MapPin size={14} className="text-red-500 animate-bounce" />
-            <p className="text-[10px] font-black uppercase tracking-[0.2em]">Lahore Education Hub | ID: {studentId}</p>
+            <MapPin size={14} className="text-red-500 animate-bounce hidden sm:inline" />
+            <p className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em]">Lahore Education Hub | ID: {studentId}</p>
           </div>
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 md:gap-3">
             {/* View ID Card Button */}
             <button 
               onClick={() => setIsCardOpen(true)}
-              className="flex items-center gap-2 bg-white/5 hover:bg-green-500/10 border border-white/10 hover:border-green-500/50 px-5 py-3 rounded-2xl transition-all group shadow-xl"
+              className="flex items-center gap-2 bg-white/5 hover:bg-green-500/10 border border-white/10 hover:border-green-500/50 px-3 md:px-5 py-2 md:py-3 rounded-xl md:rounded-2xl transition-all group shadow-xl text-xs md:text-[10px]"
             >
-              <Contact2 className="text-green-500 group-hover:scale-110 transition-transform" size={20} />
-              <span className="text-[10px] font-black uppercase tracking-widest">View ID Card</span>
+              <Contact2 className="text-green-500 group-hover:scale-110 transition-transform" size={16} />
+              <span className="font-black uppercase tracking-widest hidden sm:inline">View ID Card</span>
+              <span className="font-black uppercase tracking-widest sm:hidden">ID Card</span>
             </button>
 
-            {/* ✅ Integrated Logout Button */}
+            {/* Integrated Logout Button */}
             <button 
               onClick={handleLogout}
-              className="flex items-center gap-2 bg-red-500/10 hover:bg-red-500 border border-red-500/20 hover:border-red-600 px-5 py-3 rounded-2xl transition-all group shadow-xl"
+              className="flex items-center gap-2 bg-red-500/10 hover:bg-red-500 border border-red-500/20 hover:border-red-600 px-3 md:px-5 py-2 md:py-3 rounded-xl md:rounded-2xl transition-all group shadow-xl text-xs md:text-[10px]"
             >
-              <LogOut className="text-red-500 group-hover:text-white group-hover:scale-110 transition-transform" size={20} />
-              <span className="text-[10px] font-black uppercase tracking-widest group-hover:text-white text-red-500">Logout</span>
+              <LogOut className="text-red-500 group-hover:text-white group-hover:scale-110 transition-transform" size={16} />
+              <span className="font-black uppercase tracking-widest group-hover:text-white text-red-500 hidden sm:inline">Logout</span>
+              <span className="font-black uppercase tracking-widest group-hover:text-white text-red-500 sm:hidden">Logout</span>
             </button>
 
-            <div className="bg-[#161d2f] px-6 py-4 rounded-[2rem] border border-white/5 shadow-2xl backdrop-blur-sm hidden lg:block">
-                <p className="text-[9px] text-gray-500 font-black uppercase tracking-[0.3em] mb-1">Current Session</p>
-                <p className="text-sm font-black text-green-400 italic">2025 - 2026 Academic Year</p>
+            <div className="bg-[#161d2f] px-4 md:px-6 py-2 md:py-4 rounded-xl md:rounded-[2rem] border border-white/5 shadow-2xl backdrop-blur-sm hidden lg:block text-xs md:text-sm">
+                <p className="text-[8px] md:text-[9px] text-gray-500 font-black uppercase tracking-[0.3em] mb-1">Current Session</p>
+                <p className="text-xs md:text-sm font-black text-green-400 italic">2025 - 2026 Academic Year</p>
             </div>
         </div>
       </div>
@@ -164,7 +166,7 @@ export default function StudentDashboardPage({ params }) {
       />
 
       {/* Stats Cards Section */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8 mb-12 md:mb-16">
         <StatWidget 
           icon={<TrendingUp size={40}/>} 
           label="Overall Attendance" 
@@ -189,12 +191,12 @@ export default function StudentDashboardPage({ params }) {
       </div>
 
       {/* Performance Analytics */}
-      <div className="mb-16">
-        <div className="flex items-center gap-3 mb-8">
-            <TrendingUp className="text-green-500" size={24} />
-            <h2 className="text-2xl font-black italic uppercase tracking-tighter text-white">Performance Analytics</h2>
+      <div className="mb-12 md:mb-16">
+        <div className="flex items-center gap-3 mb-6 md:mb-8">
+            <TrendingUp className="text-green-500" size={20} />
+            <h2 className="text-xl md:text-2xl font-black italic uppercase tracking-tighter text-white">Performance Analytics</h2>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
             <QuizProgressChart data={analytics.quizTrends} />
             <AttendanceBarChart data={analytics.attendanceTrends} />
         </div>
@@ -202,45 +204,45 @@ export default function StudentDashboardPage({ params }) {
 
       {/* Courses Section */}
       <div className="mb-10">
-        <div className="flex items-center gap-3 mb-8">
-          <div className="p-3 bg-green-500/10 rounded-2xl border border-green-500/20">
-            <BookOpen className="text-green-500" size={24} />
+        <div className="flex items-center gap-3 mb-6 md:mb-8">
+          <div className="p-2 md:p-3 bg-green-500/10 rounded-xl md:rounded-2xl border border-green-500/20">
+            <BookOpen className="text-green-500" size={20} />
           </div>
-          <h2 className="text-2xl font-black italic uppercase tracking-tighter text-white">Registered Courses</h2>
+          <h2 className="text-xl md:text-2xl font-black italic uppercase tracking-tighter text-white">Registered Courses</h2>
         </div>
         
         {courses.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {courses.map((course, index) => (
               <div 
                 key={course.id || index} 
                 onClick={() => handleCourseClick(course.id)} 
-                className="group bg-[#161d2f] p-8 rounded-[2.5rem] border border-white/5 hover:border-green-500/40 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)] relative overflow-hidden cursor-pointer active:scale-95"
+                className="group bg-[#161d2f] p-4 md:p-8 rounded-xl md:rounded-[2.5rem] border border-white/5 hover:border-green-500/40 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)] relative overflow-hidden cursor-pointer active:scale-95"
               >
                 <div className="absolute -top-4 -right-4 p-4 opacity-[0.03] group-hover:opacity-[0.08] transition-all duration-700 group-hover:rotate-12">
                     <GraduationCap size={120} />
                 </div>
                 <div className="relative z-10">
                   <div className="flex justify-between items-start">
-                    <span className="text-[9px] font-black bg-green-500/10 text-green-500 px-3 py-1 rounded-full uppercase tracking-[0.2em] border border-green-500/10">Active</span>
-                    <ArrowRight className="text-white/20 group-hover:text-green-500 transition-colors transform group-hover:translate-x-2" size={20} />
+                    <span className="text-[8px] md:text-[9px] font-black bg-green-500/10 text-green-500 px-2 md:px-3 py-1 rounded-full uppercase tracking-[0.2em] border border-green-500/10">Active</span>
+                    <ArrowRight className="text-white/20 group-hover:text-green-500 transition-colors transform group-hover:translate-x-2" size={16} />
                   </div>
-                  <h3 className="font-black text-white text-xl mt-6 uppercase tracking-tighter leading-tight group-hover:text-green-400 transition-colors">
+                  <h3 className="font-black text-white text-lg md:text-xl mt-4 md:mt-6 uppercase tracking-tighter leading-tight group-hover:text-green-400 transition-colors">
                     {course.subject_name || course.title || "General Subject"}
                   </h3>
-                  <div className="flex items-center gap-2 mt-4 text-gray-500">
+                  <div className="flex items-center gap-2 mt-3 md:mt-4 text-gray-500">
                     <div className="h-[1px] w-6 bg-gray-800"></div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest">Code: LP-{String(studentId).slice(-3)}-{index + 101}</p>
+                    <p className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest">Code: LP-{String(studentId).slice(-3)}-{index + 101}</p>
                   </div>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="py-24 text-center border border-white/5 rounded-[3rem] bg-[#161d2f]/50 backdrop-blur-sm shadow-inner">
-            <Info className="mx-auto mb-6 text-blue-500/20" size={64} />
-            <h3 className="text-xl font-black italic uppercase text-gray-400 tracking-tighter">No Courses Found</h3>
-            <p className="text-gray-600 mt-2 max-w-xs mx-auto text-xs font-bold uppercase tracking-widest leading-relaxed">
+          <div className="py-16 md:py-24 text-center border border-white/5 rounded-xl md:rounded-[3rem] bg-[#161d2f]/50 backdrop-blur-sm shadow-inner">
+            <Info className="mx-auto mb-4 md:mb-6 text-blue-500/20" size={48} />
+            <h3 className="text-lg md:text-xl font-black italic uppercase text-gray-400 tracking-tighter">No Courses Found</h3>
+            <p className="text-gray-600 mt-2 max-w-xs mx-auto text-[9px] md:text-xs font-bold uppercase tracking-widest leading-relaxed">
               Contact Lahore Central Portal to sync your academic records.
             </p>
           </div>
@@ -261,27 +263,27 @@ function StatWidget({icon, label, value, color, progress, subText}) {
   const textColor = currentTheme.split(' ')[0];
 
   return (
-    <div className={`bg-[#161d2f] p-8 rounded-[2.5rem] border border-white/5 shadow-2xl relative overflow-hidden group hover:bg-white/[0.02] transition-all duration-500`}>
-      <div className={`absolute right-6 top-6 opacity-[0.07] group-hover:opacity-20 group-hover:scale-125 transition-all duration-700 ${textColor}`}>
-        {icon}
+    <div className={`bg-[#161d2f] p-4 md:p-8 rounded-xl md:rounded-[2.5rem] border border-white/5 shadow-2xl relative overflow-hidden group hover:bg-white/[0.02] transition-all duration-500`}>
+      <div className={`absolute right-4 md:right-6 top-4 md:top-6 opacity-[0.07] group-hover:opacity-20 group-hover:scale-125 transition-all duration-700 ${textColor}`}>
+        <div className="text-3xl md:text-5xl">{icon}</div>
       </div>
-      <p className="text-gray-500 text-[9px] font-black uppercase tracking-[0.3em] mb-2">{label}</p>
-      <h2 className={`text-6xl font-black tracking-tighter ${textColor} italic`}>{value}</h2>
+      <p className="text-gray-500 text-[8px] md:text-[9px] font-black uppercase tracking-[0.3em] mb-2">{label}</p>
+      <h2 className={`text-4xl md:text-6xl font-black tracking-tighter ${textColor} italic`}>{value}</h2>
       
       {progress !== undefined ? (
-        <div className="mt-8">
+        <div className="mt-6 md:mt-8">
           <div className="flex justify-between items-center mb-2">
-            <span className="text-[8px] font-black uppercase text-gray-600 tracking-widest">Performance Track</span>
-            <span className="text-[8px] font-black uppercase text-green-500 tracking-widest">{progress}%</span>
+            <span className="text-[7px] md:text-[8px] font-black uppercase text-gray-600 tracking-widest">Performance Track</span>
+            <span className="text-[7px] md:text-[8px] font-black uppercase text-green-500 tracking-widest">{progress}%</span>
           </div>
-          <div className="w-full bg-black/40 h-1.5 rounded-full overflow-hidden border border-white/5">
+          <div className="w-full bg-black/40 h-1 md:h-1.5 rounded-full overflow-hidden border border-white/5">
             <div className="bg-green-500 h-full transition-all duration-1000 ease-out" style={{ width: `${progress}%` }}></div>
           </div>
         </div>
       ) : (
-        <div className="mt-8 flex items-center gap-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-gray-800 animate-pulse"></div>
-          <p className="text-[9px] text-gray-600 font-black uppercase tracking-widest">{subText}</p>
+        <div className="mt-6 md:mt-8 flex items-center gap-2">
+          <div className="w-1 md:w-1.5 h-1 md:h-1.5 rounded-full bg-gray-800 animate-pulse"></div>
+          <p className="text-[7px] md:text-[9px] text-gray-600 font-black uppercase tracking-widest">{subText}</p>
         </div>
       )}
     </div>

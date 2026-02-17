@@ -11,14 +11,18 @@ import {
   FileText, 
   PenTool, 
   UserPlus, 
-  BookOpenCheck 
+  BookOpenCheck,
+  Menu,
+  X
 } from 'lucide-react';
 import Cookies from 'js-cookie';
 
 export default function Sidebar({ role, onCollapseChange }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [userId, setUserId] = useState(null);
-  const [isMounted, setIsMounted] = useState(false); 
+  const [isMounted, setIsMounted] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -27,11 +31,31 @@ export default function Sidebar({ role, onCollapseChange }) {
     if (id) {
       setUserId(id);
     }
+    
+    // Detect screen size
+    const handleResize = () => {
+      const isMobileScreen = window.innerWidth < 768;
+      setIsMobile(isMobileScreen);
+      if (!isMobileScreen) {
+        setIsMobileOpen(false);
+      }
+    };
+    
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   useEffect(() => {
     if (onCollapseChange) onCollapseChange(isCollapsed);
   }, [isCollapsed, onCollapseChange]);
+  
+  // Close sidebar when route changes on mobile
+  useEffect(() => {
+    if (isMobile) {
+      setIsMobileOpen(false);
+    }
+  }, [pathname, isMobile]);
 
   // Yeh logic ab aap dashboard header mein use karenge
   const onLogout = () => {
@@ -77,18 +101,46 @@ export default function Sidebar({ role, onCollapseChange }) {
   if (!isMounted) return <div className="w-20 h-screen bg-[#161d2f]"></div>;
 
   return (
-    <div 
-      className={`h-screen bg-[#161d2f] border-r border-gray-800 flex flex-col p-4 fixed left-0 top-0 z-50 transition-all duration-300 ${
-        isCollapsed ? 'w-20' : 'w-64'
-      }`}
-    >
-      {/* Toggle Button */}
-      <button 
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        className="absolute -right-3 top-10 bg-green-500 rounded-full p-1 text-black hover:scale-110 shadow-lg z-[60]"
+    <>
+      {/* Hamburger Menu Button - Mobile Only */}
+      {isMobile && (
+        <button 
+          onClick={() => setIsMobileOpen(!isMobileOpen)}
+          className="fixed top-4 left-4 z-[70] bg-green-500 rounded-lg p-2 text-black hover:bg-green-400 transition-all md:hidden"
+        >
+          {isMobileOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+      )}
+
+      {/* Mobile Overlay */}
+      {isMobile && isMobileOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setIsMobileOpen(false)}
+        />
+      )}
+
+      {/* Sidebar - Responsive Position */}
+      <div 
+        className={`h-screen bg-[#161d2f] border-r border-gray-800 flex flex-col p-4 fixed md:static z-50 transition-all duration-300 top-0 left-0 ${
+          isMobile
+            ? isMobileOpen 
+              ? 'w-64 translate-x-0' 
+              : 'w-64 -translate-x-full'
+            : isCollapsed 
+              ? 'w-20' 
+              : 'w-64'
+        } ${isMobile ? 'md:translate-x-0' : ''}`}
       >
-        {isCollapsed ? <ChevronRight size={16}/> : <ChevronLeft size={16}/>}
-      </button>
+      {/* Toggle Button - Desktop Only */}
+      {!isMobile && (
+        <button 
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="absolute -right-3 top-10 bg-green-500 rounded-full p-1 text-black hover:scale-110 shadow-lg z-[60]"
+        >
+          {isCollapsed ? <ChevronRight size={16}/> : <ChevronLeft size={16}/>}
+        </button>
+      )}
 
       {/* Logo Section */}
       <div className={`mb-10 px-2 ${isCollapsed ? 'text-center' : ''}`}>
@@ -129,6 +181,7 @@ export default function Sidebar({ role, onCollapseChange }) {
       </nav>
 
       {/* Logout button yahan se delete kar diya gaya hai */}
-    </div>
+      </div>
+    </>
   );
 }

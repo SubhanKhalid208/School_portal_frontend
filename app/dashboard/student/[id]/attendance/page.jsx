@@ -50,99 +50,101 @@ export default function AttendanceReportPage({ params }) {
   );
 
   return (
-    <div className="p-8 max-w-7xl mx-auto text-white min-h-screen selection:bg-green-500/30">
+    <div className="p-4 md:p-8 max-w-7xl mx-auto text-white min-h-screen selection:bg-green-500/30">
       {/* Header section */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-10 gap-4">
+      <div className="flex flex-col gap-4 md:gap-0 md:flex-row md:items-center justify-between mb-8 md:mb-10">
         <div>
-          <h1 className="text-4xl font-black italic text-white tracking-tighter uppercase flex items-center gap-3">
-            <Calendar size={32} className="text-green-500" /> Attendance <span className="text-green-500">Report</span>
+          <h1 className="text-2xl md:text-4xl font-black italic text-white tracking-tighter uppercase flex items-center gap-2 md:gap-3">
+            <Calendar size={24} className="md:w-8 md:h-8 text-green-500" /> Attendance <span className="text-green-500">Report</span>
           </h1>
           <div className="flex items-center gap-2 text-gray-500 mt-1">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em]">Lahore Education Hub | ID: {studentId}</p>
+            <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em]">Lahore Education Hub | ID: {studentId}</p>
           </div>
         </div>
         <Link 
           href={`/dashboard/student/${studentId}`}
-          className="flex items-center gap-2 bg-[#161d2f] hover:bg-green-600/20 border border-white/5 hover:border-green-500/50 px-6 py-3 rounded-2xl transition-all duration-300 font-black text-[10px] tracking-[0.1em] shadow-2xl group"
+          className="flex items-center gap-2 bg-[#161d2f] hover:bg-green-600/20 border border-white/5 hover:border-green-500/50 px-4 md:px-6 py-2 md:py-3 rounded-lg md:rounded-2xl transition-all duration-300 font-black text-[9px] md:text-[10px] tracking-[0.1em] shadow-2xl group"
         >
-          <ChevronLeft size={18} className="group-hover:-translate-x-1 transition-transform" /> BACK TO DASHBOARD
+          <ChevronLeft size={16} className="md:w-[18px] group-hover:-translate-x-1 transition-transform" /> BACK
         </Link>
       </div>
 
       {/* Stats Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-         <div className="bg-[#161d2f] p-8 rounded-[2rem] border border-white/5 flex justify-between items-center shadow-2xl relative overflow-hidden group">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8">
+         <div className="bg-[#161d2f] p-6 md:p-8 rounded-lg md:rounded-[2rem] border border-white/5 flex justify-between items-center shadow-2xl relative overflow-hidden group">
             <div className="absolute inset-0 bg-green-500/5 translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
             <div className="relative z-10">
-                <span className="text-gray-500 font-black uppercase text-[10px] tracking-widest block mb-1">Total Records</span>
-                <span className="text-4xl font-black italic tracking-tighter text-white">{history.length}</span>
+                <span className="text-gray-500 font-black uppercase text-[8px] md:text-[10px] tracking-widest block mb-1">Total Records</span>
+                <span className="text-3xl md:text-4xl font-black italic tracking-tighter text-white">{history.length}</span>
             </div>
-            <div className="bg-white/5 p-4 rounded-2xl text-green-500">
-                <CheckCircle size={24} />
+            <div className="bg-white/5 p-3 md:p-4 rounded-lg md:rounded-2xl text-green-500">
+                <CheckCircle size={20} className="md:w-6 md:h-6" />
             </div>
          </div>
          
-         <div className="bg-[#161d2f] p-8 rounded-[2rem] border border-white/5 flex justify-between items-center shadow-2xl relative overflow-hidden group">
+         <div className="bg-[#161d2f] p-6 md:p-8 rounded-lg md:rounded-[2rem] border border-white/5 flex justify-between items-center shadow-2xl relative overflow-hidden group">
             <div className="absolute inset-0 bg-blue-500/5 translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
             <div className="relative z-10">
-                <span className="text-gray-500 font-black uppercase text-[10px] tracking-widest block mb-1">Last Updated</span>
-                <span className="text-xl font-black text-green-500 italic uppercase tracking-tighter">
+                <span className="text-gray-500 font-black uppercase text-[8px] md:text-[10px] tracking-widest block mb-1">Last Updated</span>
+                <span className="text-lg md:text-xl font-black text-green-500 italic uppercase tracking-tighter">
                     {history[0] ? new Date(history[0].date).toLocaleDateString('en-PK', { day: 'numeric', month: 'short' }) : 'No Data'}
                 </span>
             </div>
-            <div className="bg-white/5 p-4 rounded-2xl text-blue-500">
-                <Clock size={24} />
+            <div className="bg-white/5 p-3 md:p-4 rounded-lg md:rounded-2xl text-blue-500">
+                <Clock size={20} className="md:w-6 md:h-6" />
             </div>
          </div>
       </div>
 
       {/* Attendance Table */}
-      <div className="bg-[#161d2f] rounded-[2.5rem] border border-white/5 overflow-hidden shadow-2xl backdrop-blur-md">
+      <div className="bg-[#161d2f] rounded-lg md:rounded-[2.5rem] border border-white/5 overflow-hidden shadow-2xl backdrop-blur-md">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="bg-white/[0.02] text-gray-500 uppercase text-[9px] tracking-[0.3em] font-black">
-                <th className="px-10 py-8">Date</th>
-                <th className="px-10 py-8">Subject / Course</th>
-                <th className="px-10 py-8 text-center">Status</th>
-                <th className="px-10 py-8 text-right">Timestamp</th>
+              <tr className="bg-white/[0.02] text-gray-500 uppercase text-[7px] md:text-[9px] tracking-[0.3em] font-black">
+                <th className="px-3 md:px-10 py-4 md:py-8">Date</th>
+                <th className="px-3 md:px-10 py-4 md:py-8">Subject / Course</th>
+                <th className="px-3 md:px-10 py-4 md:py-8 text-center">Status</th>
+                <th className="px-3 md:px-10 py-4 md:py-8 text-right hidden sm:table-cell">Timestamp</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
               {history.length > 0 ? (
                 history.map((record, index) => (
                   <tr key={index} className="hover:bg-white/[0.02] transition-colors group">
-                    <td className="px-10 py-6 font-black text-white italic tracking-tighter">
+                    <td className="px-3 md:px-10 py-4 md:py-6 font-black text-white italic tracking-tighter text-xs md:text-base">
                       {new Date(record.date).toLocaleDateString('en-GB', {
                         day: '2-digit', month: 'short', year: 'numeric'
                       })}
                     </td>
-                    <td className="px-10 py-6">
-                      <div className="flex items-center gap-4">
-                        <div className="w-1 h-5 bg-green-500 rounded-full group-hover:h-8 transition-all duration-300"></div>
-                        <span className="font-black text-gray-400 uppercase text-[11px] tracking-widest group-hover:text-white transition-colors">
+                    <td className="px-3 md:px-10 py-4 md:py-6">
+                      <div className="flex items-center gap-2 md:gap-4">
+                        <div className="w-1 h-4 md:h-5 bg-green-500 rounded-full group-hover:h-6 md:group-hover:h-8 transition-all duration-300"></div>
+                        <span className="font-black text-gray-400 uppercase text-[8px] md:text-[11px] tracking-widest group-hover:text-white transition-colors">
                             {record.subject_name || 'General Attendance'}
                         </span>
                       </div>
                     </td>
-                    <td className="px-10 py-6 text-center">
+                    <td className="px-3 md:px-10 py-4 md:py-6 text-center">
                       <div className="flex justify-center">
                         {record.status?.toLowerCase() === 'present' ? (
-                            <span className="flex items-center gap-2 text-green-500 bg-green-500/5 border border-green-500/20 px-5 py-2 rounded-full text-[9px] font-black tracking-[0.2em] uppercase">
+                            <span className="flex items-center gap-1 md:gap-2 text-green-500 bg-green-500/5 border border-green-500/20 px-2 md:px-5 py-1 md:py-2 rounded-full text-[7px] md:text-[9px] font-black tracking-[0.2em] uppercase">
                                 <div className="w-1 h-1 bg-green-500 rounded-full animate-ping"></div>
-                                PRESENT
+                                <span className="hidden sm:inline">PRESENT</span>
+                                <span className="sm:hidden">Yes</span>
                             </span>
                         ) : (
-                            <span className="flex items-center gap-2 text-red-500 bg-red-500/5 border border-red-500/20 px-5 py-2 rounded-full text-[9px] font-black tracking-[0.2em] uppercase">
-                                <XCircle size={12} /> ABSENT
+                            <span className="flex items-center gap-1 md:gap-2 text-red-500 bg-red-500/5 border border-red-500/20 px-2 md:px-5 py-1 md:py-2 rounded-full text-[7px] md:text-[9px] font-black tracking-[0.2em] uppercase">
+                                <XCircle size={10} className="md:w-3 md:h-3" /> <span className="hidden sm:inline">ABSENT</span>
+                                <span className="sm:hidden">No</span>
                             </span>
                         )}
                       </div>
                     </td>
-                    <td className="px-10 py-6 text-right font-mono text-[10px] text-gray-600">
-                      <div className="flex items-center justify-end gap-2 group-hover:text-green-500 transition-colors">
-                        <Clock size={12} /> 
+                    <td className="px-3 md:px-10 py-4 md:py-6 text-right font-mono text-[7px] md:text-[10px] text-gray-600 hidden sm:table-cell">
+                      <div className="flex items-center justify-end gap-1 md:gap-2 group-hover:text-green-500 transition-colors">
+                        <Clock size={10} className="md:w-3 md:h-3" /> 
                         {record.created_at ? new Date(record.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
                       </div>
                     </td>
@@ -150,14 +152,14 @@ export default function AttendanceReportPage({ params }) {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="4" className="px-8 py-32 text-center">
-                    <div className="flex flex-col items-center gap-6">
-                      <div className="p-6 bg-blue-500/5 rounded-full border border-blue-500/10">
-                        <Info size={40} className="text-blue-500/40" />
+                  <td colSpan="4" className="px-4 md:px-8 py-16 md:py-32 text-center">
+                    <div className="flex flex-col items-center gap-4 md:gap-6">
+                      <div className="p-4 md:p-6 bg-blue-500/5 rounded-full border border-blue-500/10">
+                        <Info size={32} className="md:w-10 md:h-10 text-blue-500/40" />
                       </div>
                       <div className="space-y-2">
-                        <p className="text-2xl font-black italic uppercase tracking-tighter text-gray-400">Database Empty</p>
-                        <p className="text-[10px] font-bold text-gray-600 uppercase tracking-widest max-w-xs mx-auto leading-relaxed">
+                        <p className="text-lg md:text-2xl font-black italic uppercase tracking-tighter text-gray-400">Database Empty</p>
+                        <p className="text-[8px] md:text-[10px] font-bold text-gray-600 uppercase tracking-widest max-w-xs mx-auto leading-relaxed">
                             Ahmad, student has not marked any attendance in Lahore Portal records yet.
                         </p>
                       </div>
