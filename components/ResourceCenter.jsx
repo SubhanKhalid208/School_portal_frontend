@@ -28,9 +28,9 @@ const ResourceCenter = ({ courseId, userRole, userId }) => {
         if (!courseId) return;
         setLoading(true);
         try {
-            // Backend URL check karein: http://localhost:5000/api/resources/course/${courseId}
+            // Backend URL check karein: `${process.env.NEXT_PUBLIC_API_URL}/resources/course/${courseId}`
             const res = await axios.get(
-                `http://localhost:5000/api/resources/course/${courseId}`, 
+                `${process.env.NEXT_PUBLIC_API_URL}/resources/course/${courseId}`,
                 getAuthConfig()
             );
             if (res.data.success) {
@@ -74,8 +74,8 @@ const ResourceCenter = ({ courseId, userRole, userId }) => {
 
         try {
             const res = await axios.post(
-                'http://localhost:5000/api/resources/upload', 
-                data, 
+                `${process.env.NEXT_PUBLIC_API_URL}/resources/upload`,
+                data,
                 getAuthConfig()
             );
             
@@ -168,13 +168,12 @@ const ResourceCenter = ({ courseId, userRole, userId }) => {
                             
                             <div className="mt-8">
                                 {res.resource_type === 'video_link' ? (
-                                    <a href={res.file_url} target="_blank" rel="noreferrer" 
+                                    <a href={res.file_url} target="_blank" rel="noreferrer"
                                        className="flex items-center justify-center w-full bg-red-500/10 text-red-500 border border-red-500/20 px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all shadow-md">
                                         Open External Link
                                     </a>
                                 ) : (
-                                    /* Muhammad Ahmed: Yahan hum file_url use kar rahe hain jo backend ne bheja hai */
-                                    <a href={`http://localhost:5000${res.file_url}`} target="_blank" rel="noreferrer" download
+                                    <a href={`${process.env.NEXT_PUBLIC_API_URL?.replace('/api','') || ''}${res.file_url}`} target="_blank" rel="noreferrer" download
                                        className="flex items-center justify-center w-full bg-green-500 text-black px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-green-400 transition-all shadow-md">
                                         Download PDF
                                     </a>
