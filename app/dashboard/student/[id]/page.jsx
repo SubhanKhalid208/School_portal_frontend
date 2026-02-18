@@ -4,7 +4,8 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import { 
   BookOpen, GraduationCap, TrendingUp, CheckCircle, 
-  Calendar, Info, MapPin, Contact2, ArrowRight, LogOut 
+  Calendar, Info, MapPin, Contact2, ArrowRight, LogOut,
+  Library 
 } from 'lucide-react'; 
 import { safeApiCall } from '@/app/utils/api'; 
 import Cookies from 'js-cookie'; 
@@ -12,6 +13,7 @@ import Cookies from 'js-cookie';
 import QuizProgressChart from './_components/QuizProgressChart';
 import AttendanceBarChart from './_components/AttendanceBarChart';
 import StudentIDCard from '@/components/StudentIDCard';
+import ResourceCenter from '@/components/ResourceCenter'; 
 
 export default function StudentDashboardPage({ params }) {
   const resolvedParams = use(params);
@@ -31,7 +33,9 @@ export default function StudentDashboardPage({ params }) {
   const [isCardOpen, setIsCardOpen] = useState(false);
   const [userData, setUserData] = useState(null);
 
-  // ✅ Logout Logic
+  // ✅ MUHAMMAD AHMED: Selected Course State for Resources
+  const [selectedCourseForResources, setSelectedCourseForResources] = useState(null);
+
   const handleLogout = () => {
     Cookies.remove('userId');
     Cookies.remove('token'); 
@@ -39,6 +43,11 @@ export default function StudentDashboardPage({ params }) {
     localStorage.clear();
     toast.success("Logging out of Lahore Portal...");
     window.location.href = '/login';
+  };
+
+  const scrollToResources = () => {
+    const element = document.getElementById('resource-section');
+    element?.scrollIntoView({ behavior: 'smooth' });
   };
 
   useEffect(() => {
@@ -56,14 +65,12 @@ export default function StudentDashboardPage({ params }) {
           return;
         }
 
-        // ✅ Saari Calls ek saath (Jaise purane code mein thin)
         const [statsRes, coursesRes, analyticsRes] = await Promise.all([
           safeApiCall(`student/attendance/student/${studentId}`),
           safeApiCall(`student/my-courses/${studentId}`),
           safeApiCall(`student/analytics/${studentId}`)
         ]);
 
-        // ✅ Attendance Stats Handling
         if (statsRes && statsRes.success) {
           const stats = statsRes.data?.data || statsRes.data || statsRes; 
           setData({
@@ -75,17 +82,21 @@ export default function StudentDashboardPage({ params }) {
           setUserData({
             id: studentId,
             name: stats.studentName || stats.name || "Muhammad Ahmed", 
-            profile_pic: stats.profile_pic || stats.image || null
+            profile_pic: stats.profile_pic || stats.image || null,
+            role: 'student'
           });
         }
 
-        // ✅ Courses List Handling (Strictly keeping your original logic)
         if (coursesRes && coursesRes.success) {
           const courseList = coursesRes.data?.data?.courses || coursesRes.data?.courses || coursesRes.courses || [];
           setCourses(Array.isArray(courseList) ? courseList : []);
+          
+          // ✅ MUHAMMAD AHMED: Pehla course default select kar lo
+          if (Array.isArray(courseList) && courseList.length > 0) {
+            setSelectedCourseForResources(courseList[0].id);
+          }
         }
 
-        // ✅ Analytics Handling
         if (analyticsRes && analyticsRes.success) {
           const analyticData = analyticsRes.data?.data || analyticsRes.data || analyticsRes;
           setAnalytics({
@@ -96,7 +107,6 @@ export default function StudentDashboardPage({ params }) {
 
       } catch (err) {
         console.error("Critical Sync Error:", err);
-        toast.error("Lahore Portal: Syncing error!");
       } finally {
         setLoading(false);
       }
@@ -105,9 +115,11 @@ export default function StudentDashboardPage({ params }) {
     fetchDashboardData();
   }, [studentId, router]);
 
-  // ✅ Course Navigation
+  // ✅ MUHAMMAD AHMED: Updated Click Logic to also update Resource Center
   const handleCourseClick = (courseId) => {
-    router.push(`/dashboard/student/course/${courseId}`);
+    setSelectedCourseForResources(courseId);
+    scrollToResources(); // Click pe scroll bhi kar dega resources tak
+    toast.success("Syncing Subject Resources...");
   };
 
   if (loading) return (
@@ -126,33 +138,36 @@ export default function StudentDashboardPage({ params }) {
       
       {/* Header */}
       <div className="mb-8 md:mb-10 flex flex-col gap-4 md:gap-0">
-        <div>
-          <h1 className="text-3xl md:text-4xl font-black italic text-white tracking-tighter uppercase">
-            Student <span className="text-green-500">Dashboard</span>
-          </h1>
-          <div className="flex items-center gap-2 text-gray-500 mt-1">
-            <MapPin size={14} className="text-red-500 animate-bounce hidden sm:inline" />
-            <p className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em]">Lahore Education Hub | ID: {studentId}</p>
-          </div>
-        </div>
-        
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 md:gap-3">
-            <button onClick={() => setIsCardOpen(true)} className="flex items-center gap-2 bg-white/5 hover:bg-green-500/10 border border-white/10 hover:border-green-500/50 px-3 md:px-5 py-2 md:py-3 rounded-xl md:rounded-2xl transition-all group shadow-xl text-xs md:text-[10px]">
-              <Contact2 className="text-green-500 group-hover:scale-110 transition-transform" size={16} />
-              <span className="font-black uppercase tracking-widest hidden sm:inline">View ID Card</span>
-              <span className="font-black uppercase tracking-widest sm:hidden">ID Card</span>
-            </button>
-
-            <button onClick={handleLogout} className="flex items-center gap-2 bg-red-500/10 hover:bg-red-500 border border-red-500/20 hover:border-red-600 px-3 md:px-5 py-2 md:py-3 rounded-xl md:rounded-2xl transition-all group shadow-xl text-xs md:text-[10px]">
-              <LogOut className="text-red-500 group-hover:text-white group-hover:scale-110 transition-transform" size={16} />
-              <span className="font-black uppercase tracking-widest group-hover:text-white text-red-500 hidden sm:inline">Logout</span>
-              <span className="font-black uppercase tracking-widest group-hover:text-white text-red-500 sm:hidden">Logout</span>
-            </button>
-
-            <div className="bg-[#161d2f] px-4 md:px-6 py-2 md:py-4 rounded-xl md:rounded-[2rem] border border-white/5 shadow-2xl backdrop-blur-sm hidden lg:block text-xs md:text-sm">
-                <p className="text-[8px] md:text-[9px] text-gray-500 font-black uppercase tracking-[0.3em] mb-1">Current Session</p>
-                <p className="text-xs md:text-sm font-black text-green-400 italic">2025 - 2026 Academic Year</p>
+        <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-black italic text-white tracking-tighter uppercase">
+              Student <span className="text-green-500">Dashboard</span>
+            </h1>
+            <div className="flex items-center gap-2 text-gray-500 mt-1">
+              <MapPin size={14} className="text-red-500 animate-bounce hidden sm:inline" />
+              <p className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em]">Lahore Education Hub | ID: {studentId}</p>
             </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 md:gap-3">
+              <button onClick={scrollToResources} className="flex items-center gap-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 hover:border-blue-500/50 px-3 md:px-5 py-2 md:py-3 rounded-xl md:rounded-2xl transition-all group shadow-xl text-xs md:text-[10px]">
+                <Library className="text-blue-500 group-hover:scale-110 transition-transform" size={16} />
+                <span className="font-black uppercase tracking-widest hidden sm:inline text-blue-400">Library Resources</span>
+                <span className="font-black uppercase tracking-widest sm:hidden text-blue-400">Library</span>
+              </button>
+
+              <button onClick={() => setIsCardOpen(true)} className="flex items-center gap-2 bg-white/5 hover:bg-green-500/10 border border-white/10 hover:border-green-500/50 px-3 md:px-5 py-2 md:py-3 rounded-xl md:rounded-2xl transition-all group shadow-xl text-xs md:text-[10px]">
+                <Contact2 className="text-green-500 group-hover:scale-110 transition-transform" size={16} />
+                <span className="font-black uppercase tracking-widest hidden sm:inline">View ID Card</span>
+                <span className="font-black uppercase tracking-widest sm:hidden">ID Card</span>
+              </button>
+
+              <button onClick={handleLogout} className="flex items-center gap-2 bg-red-500/10 hover:bg-red-500 border border-red-500/20 hover:border-red-600 px-3 md:px-5 py-2 md:py-3 rounded-xl md:rounded-2xl transition-all group shadow-xl text-xs md:text-[10px]">
+                <LogOut className="text-red-500 group-hover:text-white group-hover:scale-110 transition-transform" size={16} />
+                <span className="font-black uppercase tracking-widest group-hover:text-white text-red-500 hidden sm:inline">Logout</span>
+                <span className="font-black uppercase tracking-widest group-hover:text-white text-red-500 sm:hidden">Logout</span>
+              </button>
+          </div>
         </div>
       </div>
 
@@ -178,7 +193,7 @@ export default function StudentDashboardPage({ params }) {
       </div>
 
       {/* Courses List */}
-      <div className="mb-10">
+      <div className="mb-16">
         <div className="flex items-center gap-3 mb-6 md:mb-8">
           <div className="p-2 md:p-3 bg-green-500/10 rounded-xl md:rounded-2xl border border-green-500/20">
             <BookOpen className="text-green-500" size={20} />
@@ -192,7 +207,7 @@ export default function StudentDashboardPage({ params }) {
               <div 
                 key={course.id || index} 
                 onClick={() => handleCourseClick(course.id)} 
-                className="group bg-[#161d2f] p-4 md:p-8 rounded-xl md:rounded-[2.5rem] border border-white/5 hover:border-green-500/40 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)] relative overflow-hidden cursor-pointer active:scale-95"
+                className={`group bg-[#161d2f] p-4 md:p-8 rounded-xl md:rounded-[2.5rem] border ${selectedCourseForResources === course.id ? 'border-green-500' : 'border-white/5'} hover:border-green-500/40 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)] relative overflow-hidden cursor-pointer active:scale-95`}
               >
                 <div className="absolute -top-4 -right-4 p-4 opacity-[0.03] group-hover:opacity-[0.08] transition-all duration-700 group-hover:rotate-12">
                     <GraduationCap size={120} />
@@ -207,7 +222,6 @@ export default function StudentDashboardPage({ params }) {
                   </h3>
                   <div className="flex items-center gap-2 mt-3 md:mt-4 text-gray-500">
                     <div className="h-[1px] w-6 bg-gray-800"></div>
-                    {/* ✅ Keeping your specific LP coding logic */}
                     <p className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest">Code: LP-{String(studentId).slice(-3)}-{index + 101}</p>
                   </div>
                 </div>
@@ -224,11 +238,35 @@ export default function StudentDashboardPage({ params }) {
           </div>
         )}
       </div>
+
+      {/* ✅ RESOURCE CENTER SECTION WITH DYNAMIC COURSE ID */}
+      <div id="resource-section" className="mb-20 pt-16 border-t border-white/5">
+        <div className="flex items-center gap-3 mb-8">
+          <div className="p-2 md:p-3 bg-blue-500/10 rounded-xl md:rounded-2xl border border-blue-500/20">
+            <Library className="text-blue-500" size={20} />
+          </div>
+          <h2 className="text-xl md:text-2xl font-black italic uppercase tracking-tighter text-white">Learning Resources Hub</h2>
+        </div>
+        
+        <div className="bg-[#161d2f]/30 rounded-[2.5rem] border border-white/5 p-4 md:p-10 backdrop-blur-md">
+            {selectedCourseForResources ? (
+                <ResourceCenter 
+                    courseId={selectedCourseForResources} 
+                    userRole="student" 
+                    userId={studentId} 
+                />
+            ) : (
+                <div className="py-20 text-center text-gray-500 font-black uppercase tracking-widest animate-pulse">
+                    Select a Subject from above to view Study Materials
+                </div>
+            )}
+        </div>
+      </div>
+
     </div>
   );
 }
 
-// ✅ StatWidget with original styling
 function StatWidget({icon, label, value, color, progress, subText}) {
   const colors = {
     green: "text-green-500 bg-green-500/5 border-green-500/10",

@@ -4,12 +4,13 @@ import { toast } from 'react-hot-toast';
 import { 
   ClipboardList, Users, Eye, X, Award, Calendar, 
   BookOpen, Trash2, List, AlertTriangle, LogOut,
-  UserRound // ✅ ID Card icon ke liye
+  UserRound, Library // ✅ Library icon add kiya resource center ke liye
 } from 'lucide-react';
 import Cookies from 'js-cookie'; 
 
-// ✅ IdentityCard Component Import (Path apne mutabiq check karlein)
+// ✅ Component Imports
 import IdentityCard from '@/components/StudentIDCard'; 
+import ResourceCenter from '@/components/ResourceCenter'; // ✅ Resource Center Import kiya
 
 // ✅ Redux Hooks Import
 import { 
@@ -142,12 +143,10 @@ function ResultsModal({ quizId, onClose }) {
 
 // --- 3. MAIN DASHBOARD ---
 export default function TeacherDashboard() {
-  // ✅ Redux Queries
   const { data: coursesData, isLoading: coursesLoading } = useGetTeacherCoursesQuery();
   const { data: quizzes = [], isLoading: quizzesLoading } = useGetTeacherQuizzesQuery();
   const { data: statsData, isLoading: statsLoading } = useGetTeacherStatsQuery();
 
-  // ✅ Redux Mutations
   const [deleteQuiz] = useDeleteQuizMutation();
   const [deleteCourse] = useDeleteCourseTeacherMutation();
   const [createCourse] = useCreateCourseTeacherMutation();
@@ -156,13 +155,13 @@ export default function TeacherDashboard() {
   const [selectedQuizId, setSelectedQuizId] = useState(null); 
   const [viewQuestionsId, setViewQuestionsId] = useState(null); 
   const [showModal, setShowModal] = useState(false);
-  const [isIdCardOpen, setIsIdCardOpen] = useState(false); // ✅ ID Card State
+  const [isIdCardOpen, setIsIdCardOpen] = useState(false); 
   const [editingCourse, setEditingCourse] = useState(null);
   const [formData, setFormData] = useState({ title: '', description: '' });
 
   const myCourses = coursesData?.data || [];
+  const teacherId = Cookies.get('userId'); // ✅ Resource Upload ke liye ID
 
-  // ✅ Logout Handler
   const handleLogout = () => {
     Cookies.remove('userId');
     Cookies.remove('token'); 
@@ -206,10 +205,9 @@ export default function TeacherDashboard() {
       {selectedQuizId && <ResultsModal quizId={selectedQuizId} onClose={() => setSelectedQuizId(null)} />}
       {viewQuestionsId && <QuestionsModal quizId={viewQuestionsId} onClose={() => setViewQuestionsId(null)} />}
       
-      {/* ✅ ID Card Component Integration */}
       <IdentityCard 
         user={{
-          id: Cookies.get('userId'),
+          id: teacherId,
           name: statsData?.teacherName,
           role: 'teacher' 
         }}
@@ -217,7 +215,7 @@ export default function TeacherDashboard() {
         onClose={() => setIsIdCardOpen(false)}
       />
 
-      {/* Header with Title and Buttons */}
+      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
         <div>
           <h1 className="text-3xl font-black italic uppercase tracking-tighter">
@@ -227,7 +225,6 @@ export default function TeacherDashboard() {
         </div>
         
         <div className="flex items-center gap-3">
-          {/* ✅ ID Card Button */}
           <button 
             onClick={() => setIsIdCardOpen(true)}
             className="flex items-center gap-2 bg-green-500/10 hover:bg-green-500 border border-green-500/20 px-6 py-3 rounded-2xl transition-all group shadow-xl"
@@ -236,7 +233,6 @@ export default function TeacherDashboard() {
             <span className="text-[10px] font-black uppercase tracking-widest group-hover:text-white text-green-500">My ID Card</span>
           </button>
 
-          {/* ✅ Integrated Logout Button */}
           <button 
             onClick={handleLogout}
             className="flex items-center gap-2 bg-red-500/10 hover:bg-red-500 border border-red-500/20 hover:border-red-600 px-6 py-3 rounded-2xl transition-all group shadow-xl"
@@ -247,7 +243,7 @@ export default function TeacherDashboard() {
         </div>
       </div>
 
-      {/* Stats Section */}
+      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-[#161d2f] p-6 rounded-2xl border border-gray-800 shadow-xl transition-transform hover:scale-105">
           <p className="text-gray-400 text-[10px] uppercase font-bold tracking-widest">Teacher Name</p>
@@ -269,8 +265,32 @@ export default function TeacherDashboard() {
         </button>
       </div>
 
+      {/* ✅ NEW SECTION: RESOURCE SHARING (UPLOAD CENTER) */}
+      <div id="resource-upload-section" className="mt-12">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-2 bg-blue-500/10 rounded-xl border border-blue-500/20">
+            <Library className="text-blue-500" size={20} />
+          </div>
+          <h2 className="text-xl md:text-2xl font-black italic uppercase tracking-tighter text-white">Study Material Center</h2>
+        </div>
+        
+        <div className="bg-[#161d2f]/50 rounded-[2.5rem] border border-white/5 p-2 backdrop-blur-md">
+          {myCourses.length > 0 ? (
+            <ResourceCenter 
+              courseId={myCourses[0].id} // Default pehle course ke liye
+              userRole="teacher" 
+              userId={teacherId} 
+            />
+          ) : (
+            <div className="py-20 text-center text-gray-500 font-black uppercase tracking-widest">
+              Please add a subject first to upload resources.
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* TABLE 1: SUBJECTS */}
-      <div className="bg-[#161d2f] rounded-[2rem] border border-white/5 overflow-hidden shadow-2xl">
+      <div className="bg-[#161d2f] rounded-[2rem] border border-white/5 overflow-hidden shadow-2xl mt-10">
         <div className="p-6 border-b border-white/5 flex justify-between items-center bg-white/5">
           <h2 className="text-xl font-black italic uppercase tracking-tighter flex items-center gap-2">
             <BookOpen className="text-blue-500" size={20} /> My Managed Subjects
