@@ -28,15 +28,19 @@ const ResourceCenter = ({ courseId, userRole, userId }) => {
         if (!courseId) return;
         setLoading(true);
         try {
-            // Backend URL check karein: `${process.env.NEXT_PUBLIC_API_URL}/resources/course/${courseId}`
+            // Always use /api in env variable and in all API calls
+            // Backend route: /api/resources/course/:id
+            const apiPrefix = process.env.NEXT_PUBLIC_API_URL?.endsWith('/api')
+                ? process.env.NEXT_PUBLIC_API_URL
+                : `${process.env.NEXT_PUBLIC_API_URL}/api`;
             const res = await axios.get(
-                `${process.env.NEXT_PUBLIC_API_URL}/resources/course/${courseId}`,
+                `${apiPrefix}/resources/course/${courseId}`,
                 getAuthConfig()
             );
             if (res.data.success) {
                 setResources(res.data.resources);
             }
-        } catch (err) { 
+        } catch (err) {
             console.error("Error fetching resources:", err.response?.data || err.message);
             if (err.response?.status === 401 || err.response?.status === 403) {
                 console.log("Muhammad Ahmed, session expire ho gaya hai.");
@@ -73,8 +77,12 @@ const ResourceCenter = ({ courseId, userRole, userId }) => {
         }
 
         try {
+            // Always use /api in env variable and in all API calls
+            const apiPrefix = process.env.NEXT_PUBLIC_API_URL?.endsWith('/api')
+                ? process.env.NEXT_PUBLIC_API_URL
+                : `${process.env.NEXT_PUBLIC_API_URL}/api`;
             const res = await axios.post(
-                `${process.env.NEXT_PUBLIC_API_URL}/resources/upload`,
+                `${apiPrefix}/resources/upload`,
                 data,
                 getAuthConfig()
             );
@@ -86,9 +94,9 @@ const ResourceCenter = ({ courseId, userRole, userId }) => {
                 // Refresh list
                 fetchResources(); 
             }
-        } catch (err) { 
+        } catch (err) {
             console.error("Upload Error:", err.response?.data || err.message);
-            toast.error(err.response?.data?.error || "Upload failed!"); 
+            toast.error(err.response?.data?.error || "Upload failed!");
         }
     };
 
@@ -173,8 +181,16 @@ const ResourceCenter = ({ courseId, userRole, userId }) => {
                                         Open External Link
                                     </a>
                                 ) : (
-                                    <a href={`${process.env.NEXT_PUBLIC_API_URL?.replace('/api','') || ''}${res.file_url}`} target="_blank" rel="noreferrer" download
-                                       className="flex items-center justify-center w-full bg-green-500 text-black px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-green-400 transition-all shadow-md">
+                                    <a
+                                        href={res.file_url.startsWith('http')
+                                            ? res.file_url
+                                            : `${process.env.NEXT_PUBLIC_API_URL?.endsWith('/api')
+                                                ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '')
+                                                : process.env.NEXT_PUBLIC_API_URL}${res.file_url}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        download
+                                        className="flex items-center justify-center w-full bg-green-500 text-black px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-green-400 transition-all shadow-md">
                                         Download PDF
                                     </a>
                                 )}
