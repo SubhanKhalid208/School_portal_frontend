@@ -5,9 +5,9 @@ import { toast } from 'react-hot-toast';
 import { 
   BookOpen, GraduationCap, TrendingUp, CheckCircle, 
   Calendar, Info, MapPin, Contact2, ArrowRight, LogOut 
-} from 'lucide-react'; // ✅ LogOut icon add kiya
+} from 'lucide-react'; 
 import { safeApiCall } from '@/app/utils/api'; 
-import Cookies from 'js-cookie'; // ✅ Cookies handling ke liye
+import Cookies from 'js-cookie'; 
 
 import QuizProgressChart from './_components/QuizProgressChart';
 import AttendanceBarChart from './_components/AttendanceBarChart';
@@ -31,7 +31,7 @@ export default function StudentDashboardPage({ params }) {
   const [isCardOpen, setIsCardOpen] = useState(false);
   const [userData, setUserData] = useState(null);
 
-  // ✅ Logout Handler: Sidebar wala logic yahan integrate kiya
+  // ✅ Logout Logic
   const handleLogout = () => {
     Cookies.remove('userId');
     Cookies.remove('token'); 
@@ -56,12 +56,14 @@ export default function StudentDashboardPage({ params }) {
           return;
         }
 
+        // ✅ Saari Calls ek saath (Jaise purane code mein thin)
         const [statsRes, coursesRes, analyticsRes] = await Promise.all([
           safeApiCall(`student/attendance/student/${studentId}`),
           safeApiCall(`student/my-courses/${studentId}`),
           safeApiCall(`student/analytics/${studentId}`)
         ]);
 
+        // ✅ Attendance Stats Handling
         if (statsRes && statsRes.success) {
           const stats = statsRes.data?.data || statsRes.data || statsRes; 
           setData({
@@ -77,11 +79,13 @@ export default function StudentDashboardPage({ params }) {
           });
         }
 
+        // ✅ Courses List Handling (Strictly keeping your original logic)
         if (coursesRes && coursesRes.success) {
           const courseList = coursesRes.data?.data?.courses || coursesRes.data?.courses || coursesRes.courses || [];
           setCourses(Array.isArray(courseList) ? courseList : []);
         }
 
+        // ✅ Analytics Handling
         if (analyticsRes && analyticsRes.success) {
           const analyticData = analyticsRes.data?.data || analyticsRes.data || analyticsRes;
           setAnalytics({
@@ -101,6 +105,7 @@ export default function StudentDashboardPage({ params }) {
     fetchDashboardData();
   }, [studentId, router]);
 
+  // ✅ Course Navigation
   const handleCourseClick = (courseId) => {
     router.push(`/dashboard/student/course/${courseId}`);
   };
@@ -119,7 +124,7 @@ export default function StudentDashboardPage({ params }) {
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto text-white min-h-screen selection:bg-green-500/30">
       
-      {/* Welcome Header */}
+      {/* Header */}
       <div className="mb-8 md:mb-10 flex flex-col gap-4 md:gap-0">
         <div>
           <h1 className="text-3xl md:text-4xl font-black italic text-white tracking-tighter uppercase">
@@ -132,21 +137,13 @@ export default function StudentDashboardPage({ params }) {
         </div>
         
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 md:gap-3">
-            {/* View ID Card Button */}
-            <button 
-              onClick={() => setIsCardOpen(true)}
-              className="flex items-center gap-2 bg-white/5 hover:bg-green-500/10 border border-white/10 hover:border-green-500/50 px-3 md:px-5 py-2 md:py-3 rounded-xl md:rounded-2xl transition-all group shadow-xl text-xs md:text-[10px]"
-            >
+            <button onClick={() => setIsCardOpen(true)} className="flex items-center gap-2 bg-white/5 hover:bg-green-500/10 border border-white/10 hover:border-green-500/50 px-3 md:px-5 py-2 md:py-3 rounded-xl md:rounded-2xl transition-all group shadow-xl text-xs md:text-[10px]">
               <Contact2 className="text-green-500 group-hover:scale-110 transition-transform" size={16} />
               <span className="font-black uppercase tracking-widest hidden sm:inline">View ID Card</span>
               <span className="font-black uppercase tracking-widest sm:hidden">ID Card</span>
             </button>
 
-            {/* Integrated Logout Button */}
-            <button 
-              onClick={handleLogout}
-              className="flex items-center gap-2 bg-red-500/10 hover:bg-red-500 border border-red-500/20 hover:border-red-600 px-3 md:px-5 py-2 md:py-3 rounded-xl md:rounded-2xl transition-all group shadow-xl text-xs md:text-[10px]"
-            >
+            <button onClick={handleLogout} className="flex items-center gap-2 bg-red-500/10 hover:bg-red-500 border border-red-500/20 hover:border-red-600 px-3 md:px-5 py-2 md:py-3 rounded-xl md:rounded-2xl transition-all group shadow-xl text-xs md:text-[10px]">
               <LogOut className="text-red-500 group-hover:text-white group-hover:scale-110 transition-transform" size={16} />
               <span className="font-black uppercase tracking-widest group-hover:text-white text-red-500 hidden sm:inline">Logout</span>
               <span className="font-black uppercase tracking-widest group-hover:text-white text-red-500 sm:hidden">Logout</span>
@@ -159,38 +156,16 @@ export default function StudentDashboardPage({ params }) {
         </div>
       </div>
 
-      <StudentIDCard 
-        user={userData} 
-        isOpen={isCardOpen} 
-        onClose={() => setIsCardOpen(false)} 
-      />
+      <StudentIDCard user={userData} isOpen={isCardOpen} onClose={() => setIsCardOpen(false)} />
 
-      {/* Stats Cards Section */}
+      {/* Stats Widgets */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8 mb-12 md:mb-16">
-        <StatWidget 
-          icon={<TrendingUp size={40}/>} 
-          label="Overall Attendance" 
-          value={`${data.attendancePercentage}%`} 
-          color="green" 
-          progress={data.attendancePercentage}
-        />
-        <StatWidget 
-          icon={<CheckCircle size={40}/>} 
-          label="Present Days" 
-          value={data.totalPresent} 
-          color="blue" 
-          subText="Days attended this month"
-        />
-        <StatWidget 
-          icon={<Calendar size={40}/>} 
-          label="Total Academic Days" 
-          value={data.totalDays} 
-          color="purple" 
-          subText="Working sessions in portal"
-        />
+        <StatWidget icon={<TrendingUp size={40}/>} label="Overall Attendance" value={`${data.attendancePercentage}%`} color="green" progress={data.attendancePercentage} />
+        <StatWidget icon={<CheckCircle size={40}/>} label="Present Days" value={data.totalPresent} color="blue" subText="Days attended this month" />
+        <StatWidget icon={<Calendar size={40}/>} label="Total Academic Days" value={data.totalDays} color="purple" subText="Working sessions in portal" />
       </div>
 
-      {/* Performance Analytics */}
+      {/* Analytics Charts */}
       <div className="mb-12 md:mb-16">
         <div className="flex items-center gap-3 mb-6 md:mb-8">
             <TrendingUp className="text-green-500" size={20} />
@@ -202,7 +177,7 @@ export default function StudentDashboardPage({ params }) {
         </div>
       </div>
 
-      {/* Courses Section */}
+      {/* Courses List */}
       <div className="mb-10">
         <div className="flex items-center gap-3 mb-6 md:mb-8">
           <div className="p-2 md:p-3 bg-green-500/10 rounded-xl md:rounded-2xl border border-green-500/20">
@@ -232,6 +207,7 @@ export default function StudentDashboardPage({ params }) {
                   </h3>
                   <div className="flex items-center gap-2 mt-3 md:mt-4 text-gray-500">
                     <div className="h-[1px] w-6 bg-gray-800"></div>
+                    {/* ✅ Keeping your specific LP coding logic */}
                     <p className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest">Code: LP-{String(studentId).slice(-3)}-{index + 101}</p>
                   </div>
                 </div>
@@ -252,6 +228,7 @@ export default function StudentDashboardPage({ params }) {
   );
 }
 
+// ✅ StatWidget with original styling
 function StatWidget({icon, label, value, color, progress, subText}) {
   const colors = {
     green: "text-green-500 bg-green-500/5 border-green-500/10",
