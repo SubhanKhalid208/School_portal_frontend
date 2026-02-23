@@ -1,16 +1,17 @@
 'use client'
 import { useState } from 'react';
+import { useRouter } from 'next/navigation'; // ✅ Navigation ke liye add kiya
 import { toast } from 'react-hot-toast';
 import { 
   ClipboardList, Users, Eye, X, Award, Calendar, 
   BookOpen, Trash2, List, AlertTriangle, LogOut,
-  UserRound, Library // ✅ Library icon add kiya resource center ke liye
+  UserRound, Library, BarChart3 // ✅ Analytics icon add kiya
 } from 'lucide-react';
 import Cookies from 'js-cookie'; 
 
 // ✅ Component Imports
 import IdentityCard from '@/components/StudentIDCard'; 
-import ResourceCenter from '@/components/ResourceCenter'; // ✅ Resource Center Import kiya
+import ResourceCenter from '@/components/ResourceCenter'; 
 
 // ✅ Redux Hooks Import
 import { 
@@ -143,6 +144,7 @@ function ResultsModal({ quizId, onClose }) {
 
 // --- 3. MAIN DASHBOARD ---
 export default function TeacherDashboard() {
+  const router = useRouter(); // ✅ Router initialize kiya navigation ke liye
   const { data: coursesData, isLoading: coursesLoading } = useGetTeacherCoursesQuery();
   const { data: quizzes = [], isLoading: quizzesLoading } = useGetTeacherQuizzesQuery();
   const { data: statsData, isLoading: statsLoading } = useGetTeacherStatsQuery();
@@ -160,7 +162,7 @@ export default function TeacherDashboard() {
   const [formData, setFormData] = useState({ title: '', description: '' });
 
   const myCourses = coursesData?.data || [];
-  const teacherId = Cookies.get('userId'); // ✅ Resource Upload ke liye ID
+  const teacherId = Cookies.get('userId'); 
 
   const handleLogout = () => {
     Cookies.remove('userId');
@@ -201,7 +203,7 @@ export default function TeacherDashboard() {
   );
 
   return (
-    <div className="p-6 max-w-7xl mx-auto text-white space-y-10">
+    <div className="p-6 max-w-7xl mx-auto text-white space-y-10 font-sans">
       {selectedQuizId && <ResultsModal quizId={selectedQuizId} onClose={() => setSelectedQuizId(null)} />}
       {viewQuestionsId && <QuestionsModal quizId={viewQuestionsId} onClose={() => setViewQuestionsId(null)} />}
       
@@ -224,7 +226,16 @@ export default function TeacherDashboard() {
           <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.3em]">Lahore Portal | Management Dashboard</p>
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* ✅ NAYA BUTTON: ATTENDANCE REPORT */}
+          <button 
+            onClick={() => router.push('/reports')}
+            className="flex items-center gap-2 bg-blue-500/10 hover:bg-blue-600 border border-blue-500/20 px-6 py-3 rounded-2xl transition-all group shadow-xl"
+          >
+            <BarChart3 className="text-blue-500 group-hover:text-white transition-transform" size={18} />
+            <span className="text-[10px] font-black uppercase tracking-widest group-hover:text-white text-blue-500">Analytics Report</span>
+          </button>
+
           <button 
             onClick={() => setIsIdCardOpen(true)}
             className="flex items-center gap-2 bg-green-500/10 hover:bg-green-500 border border-green-500/20 px-6 py-3 rounded-2xl transition-all group shadow-xl"
@@ -265,7 +276,7 @@ export default function TeacherDashboard() {
         </button>
       </div>
 
-      {/* ✅ NEW SECTION: RESOURCE SHARING (UPLOAD CENTER) */}
+      {/* ✅ RESOURCE SHARING (UPLOAD CENTER) */}
       <div id="resource-upload-section" className="mt-12">
         <div className="flex items-center gap-3 mb-6">
           <div className="p-2 bg-blue-500/10 rounded-xl border border-blue-500/20">
@@ -277,7 +288,7 @@ export default function TeacherDashboard() {
         <div className="bg-[#161d2f]/50 rounded-[2.5rem] border border-white/5 p-2 backdrop-blur-md">
           {myCourses.length > 0 ? (
             <ResourceCenter 
-              courseId={myCourses[0].id} // Default pehle course ke liye
+              courseId={myCourses[0].id} 
               userRole="teacher" 
               userId={teacherId} 
             />
