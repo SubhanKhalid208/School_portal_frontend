@@ -5,7 +5,7 @@ import { toast } from 'react-hot-toast';
 import { 
   BookOpen, GraduationCap, TrendingUp, CheckCircle, 
   Calendar, Info, MapPin, Contact2, ArrowRight, LogOut,
-  Library 
+  Library, MessageCircle, X 
 } from 'lucide-react'; 
 import { safeApiCall } from '@/app/utils/api'; 
 import Cookies from 'js-cookie'; 
@@ -14,6 +14,7 @@ import QuizProgressChart from './_components/QuizProgressChart';
 import AttendanceBarChart from './_components/AttendanceBarChart';
 import StudentIDCard from '@/components/StudentIDCard';
 import ResourceCenter from '@/components/ResourceCenter'; 
+import ChatBox from '@/components/ChatBox'; 
 
 export default function StudentDashboardPage({ params }) {
   const resolvedParams = use(params);
@@ -31,9 +32,10 @@ export default function StudentDashboardPage({ params }) {
   const [analytics, setAnalytics] = useState({ quizTrends: [], attendanceTrends: [] });
   
   const [isCardOpen, setIsCardOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false); 
   const [userData, setUserData] = useState(null);
 
-  // ✅ MUHAMMAD AHMED: Selected Course State for Resources
+  // ✅ Selected Course State for Resources & Chat
   const [selectedCourseForResources, setSelectedCourseForResources] = useState(null);
 
   const handleLogout = () => {
@@ -48,6 +50,15 @@ export default function StudentDashboardPage({ params }) {
   const scrollToResources = () => {
     const element = document.getElementById('resource-section');
     element?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // ✅ Scroll to Chat
+  const scrollToChat = () => {
+    setIsChatOpen(true);
+    setTimeout(() => {
+        const element = document.getElementById('chat-section');
+        element?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
   };
 
   useEffect(() => {
@@ -91,7 +102,6 @@ export default function StudentDashboardPage({ params }) {
           const courseList = coursesRes.data?.data?.courses || coursesRes.data?.courses || coursesRes.courses || [];
           setCourses(Array.isArray(courseList) ? courseList : []);
           
-          // ✅ MUHAMMAD AHMED: Pehla course default select kar lo
           if (Array.isArray(courseList) && courseList.length > 0) {
             setSelectedCourseForResources(courseList[0].id);
           }
@@ -115,10 +125,9 @@ export default function StudentDashboardPage({ params }) {
     fetchDashboardData();
   }, [studentId, router]);
 
-  // ✅ MUHAMMAD AHMED: Updated Click Logic to also update Resource Center
   const handleCourseClick = (courseId) => {
     setSelectedCourseForResources(courseId);
-    scrollToResources(); // Click pe scroll bhi kar dega resources tak
+    scrollToResources(); 
     toast.success("Syncing Subject Resources...");
   };
 
@@ -150,22 +159,27 @@ export default function StudentDashboardPage({ params }) {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 md:gap-3">
-              <button onClick={scrollToResources} className="flex items-center gap-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 hover:border-blue-500/50 px-3 md:px-5 py-2 md:py-3 rounded-xl md:rounded-2xl transition-all group shadow-xl text-xs md:text-[10px]">
-                <Library className="text-blue-500 group-hover:scale-110 transition-transform" size={16} />
-                <span className="font-black uppercase tracking-widest hidden sm:inline text-blue-400">Library Resources</span>
-                <span className="font-black uppercase tracking-widest sm:hidden text-blue-400">Library</span>
+              <button onClick={scrollToChat} className="flex items-center gap-2 bg-green-500/10 hover:bg-green-500 border border-green-500/20 px-3 md:px-5 py-2 md:py-3 rounded-xl md:rounded-2xl transition-all group shadow-xl text-xs md:text-[10px]">
+                <MessageCircle className="text-green-500 group-hover:text-white transition-transform" size={16} />
+                <span className="font-black uppercase tracking-widest group-hover:text-white text-green-500 hidden sm:inline italic">Live Support</span>
+                <span className="font-black uppercase tracking-widest group-hover:text-white text-green-500 sm:hidden italic">Chat</span>
               </button>
 
-              <button onClick={() => setIsCardOpen(true)} className="flex items-center gap-2 bg-white/5 hover:bg-green-500/10 border border-white/10 hover:border-green-500/50 px-3 md:px-5 py-2 md:py-3 rounded-xl md:rounded-2xl transition-all group shadow-xl text-xs md:text-[10px]">
-                <Contact2 className="text-green-500 group-hover:scale-110 transition-transform" size={16} />
-                <span className="font-black uppercase tracking-widest hidden sm:inline">View ID Card</span>
-                <span className="font-black uppercase tracking-widest sm:hidden">ID Card</span>
+              <button onClick={scrollToResources} className="flex items-center gap-2 bg-blue-500/10 hover:bg-blue-600 border border-blue-500/20 px-3 md:px-5 py-2 md:py-3 rounded-xl md:rounded-2xl transition-all group shadow-xl text-xs md:text-[10px]">
+                <Library className="text-blue-500 group-hover:text-white" size={16} />
+                <span className="font-black uppercase tracking-widest hidden sm:inline text-blue-400 group-hover:text-white">Library</span>
+                <span className="font-black uppercase tracking-widest sm:hidden text-blue-400 group-hover:text-white">Library</span>
               </button>
 
-              <button onClick={handleLogout} className="flex items-center gap-2 bg-red-500/10 hover:bg-red-500 border border-red-500/20 hover:border-red-600 px-3 md:px-5 py-2 md:py-3 rounded-xl md:rounded-2xl transition-all group shadow-xl text-xs md:text-[10px]">
-                <LogOut className="text-red-500 group-hover:text-white group-hover:scale-110 transition-transform" size={16} />
+              <button onClick={() => setIsCardOpen(true)} className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 px-3 md:px-5 py-2 md:py-3 rounded-xl md:rounded-2xl transition-all group shadow-xl text-xs md:text-[10px]">
+                <Contact2 className="text-gray-400 group-hover:text-white" size={16} />
+                <span className="font-black uppercase tracking-widest hidden sm:inline text-gray-400 group-hover:text-white">ID Card</span>
+                <span className="font-black uppercase tracking-widest sm:hidden text-gray-400 group-hover:text-white">ID</span>
+              </button>
+
+              <button onClick={handleLogout} className="flex items-center gap-2 bg-red-500/10 hover:bg-red-500 border border-red-500/20 px-3 md:px-5 py-2 md:py-3 rounded-xl md:rounded-2xl transition-all group shadow-xl text-xs md:text-[10px]">
+                <LogOut className="text-red-500 group-hover:text-white" size={16} />
                 <span className="font-black uppercase tracking-widest group-hover:text-white text-red-500 hidden sm:inline">Logout</span>
-                <span className="font-black uppercase tracking-widest group-hover:text-white text-red-500 sm:hidden">Logout</span>
               </button>
           </div>
         </div>
@@ -179,6 +193,37 @@ export default function StudentDashboardPage({ params }) {
         <StatWidget icon={<CheckCircle size={40}/>} label="Present Days" value={data.totalPresent} color="blue" subText="Days attended this month" />
         <StatWidget icon={<Calendar size={40}/>} label="Total Academic Days" value={data.totalDays} color="purple" subText="Working sessions in portal" />
       </div>
+
+      {/* ✅ REAL-TIME CHAT HUB SECTION (Muhammad Ahmed: Room ID Fix Applied) */}
+      {isChatOpen && (
+        <div id="chat-section" className="mb-16 animate-in fade-in slide-in-from-bottom-5 duration-700">
+            <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 md:p-3 bg-green-500/10 rounded-xl md:rounded-2xl border border-green-500/20">
+                        <MessageCircle className="text-green-500" size={20} />
+                    </div>
+                    <h2 className="text-xl md:text-2xl font-black italic uppercase tracking-tighter text-white">Live Interaction Hub</h2>
+                </div>
+                <button onClick={() => setIsChatOpen(false)} className="p-2 hover:bg-white/5 rounded-full text-gray-500 hover:text-white transition-colors">
+                    <X size={24} />
+                </button>
+            </div>
+            
+            <div className="bg-[#161d2f]/50 rounded-[2.5rem] border border-white/5 p-2 backdrop-blur-xl shadow-2xl">
+                {selectedCourseForResources ? (
+                    <ChatBox 
+                        // ✅ FIXED: Room ID starts with COURSE_ to match Teacher Panel
+                        roomId={`COURSE_${selectedCourseForResources}`} 
+                        userId={studentId} 
+                        userName={userData?.name || "Muhammad Ahmed"} 
+                        userRole="student"
+                    />
+                ) : (
+                    <div className="py-20 text-center text-gray-500 italic font-black uppercase tracking-[0.2em]">Select a course to start chatting</div>
+                )}
+            </div>
+        </div>
+      )}
 
       {/* Analytics Charts */}
       <div className="mb-12 md:mb-16">
@@ -239,7 +284,7 @@ export default function StudentDashboardPage({ params }) {
         )}
       </div>
 
-      {/* ✅ RESOURCE CENTER SECTION WITH DYNAMIC COURSE ID */}
+      {/* RESOURCE CENTER SECTION */}
       <div id="resource-section" className="mb-20 pt-16 border-t border-white/5">
         <div className="flex items-center gap-3 mb-8">
           <div className="p-2 md:p-3 bg-blue-500/10 rounded-xl md:rounded-2xl border border-blue-500/20">

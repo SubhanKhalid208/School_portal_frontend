@@ -1,17 +1,18 @@
 'use client'
 import { useState } from 'react';
-import { useRouter } from 'next/navigation'; // ✅ Navigation ke liye add kiya
+import { useRouter } from 'next/navigation'; 
 import { toast } from 'react-hot-toast';
 import { 
   ClipboardList, Users, Eye, X, Award, Calendar, 
   BookOpen, Trash2, List, AlertTriangle, LogOut,
-  UserRound, Library, BarChart3 // ✅ Analytics icon add kiya
+  UserRound, Library, BarChart3, MessageCircle 
 } from 'lucide-react';
 import Cookies from 'js-cookie'; 
 
 // ✅ Component Imports
 import IdentityCard from '@/components/StudentIDCard'; 
 import ResourceCenter from '@/components/ResourceCenter'; 
+import ChatBox from '@/components/ChatBox'; 
 
 // ✅ Redux Hooks Import
 import { 
@@ -144,7 +145,7 @@ function ResultsModal({ quizId, onClose }) {
 
 // --- 3. MAIN DASHBOARD ---
 export default function TeacherDashboard() {
-  const router = useRouter(); // ✅ Router initialize kiya navigation ke liye
+  const router = useRouter(); 
   const { data: coursesData, isLoading: coursesLoading } = useGetTeacherCoursesQuery();
   const { data: quizzes = [], isLoading: quizzesLoading } = useGetTeacherQuizzesQuery();
   const { data: statsData, isLoading: statsLoading } = useGetTeacherStatsQuery();
@@ -158,6 +159,7 @@ export default function TeacherDashboard() {
   const [viewQuestionsId, setViewQuestionsId] = useState(null); 
   const [showModal, setShowModal] = useState(false);
   const [isIdCardOpen, setIsIdCardOpen] = useState(false); 
+  const [isChatOpen, setIsChatOpen] = useState(false); 
   const [editingCourse, setEditingCourse] = useState(null);
   const [formData, setFormData] = useState({ title: '', description: '' });
 
@@ -203,7 +205,7 @@ export default function TeacherDashboard() {
   );
 
   return (
-    <div className="p-6 max-w-7xl mx-auto text-white space-y-10 font-sans">
+    <div className="p-6 max-w-7xl mx-auto text-white space-y-10 font-sans relative">
       {selectedQuizId && <ResultsModal quizId={selectedQuizId} onClose={() => setSelectedQuizId(null)} />}
       {viewQuestionsId && <QuestionsModal quizId={viewQuestionsId} onClose={() => setViewQuestionsId(null)} />}
       
@@ -220,14 +222,21 @@ export default function TeacherDashboard() {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
         <div>
-          <h1 className="text-3xl font-black italic uppercase tracking-tighter">
+          <h1 className="text-3xl font-black italic uppercase tracking-tighter text-white">
             Teacher <span className="text-blue-500">Panel</span>
           </h1>
           <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.3em]">Lahore Portal | Management Dashboard</p>
         </div>
         
         <div className="flex items-center gap-3 flex-wrap">
-          {/* ✅ NAYA BUTTON: ATTENDANCE REPORT */}
+          <button 
+            onClick={() => setIsChatOpen(!isChatOpen)}
+            className={`flex items-center gap-2 ${isChatOpen ? 'bg-green-500 text-black' : 'bg-green-500/10 text-green-500'} border border-green-500/20 px-6 py-3 rounded-2xl transition-all group shadow-xl`}
+          >
+            <MessageCircle size={18} />
+            <span className="text-[10px] font-black uppercase tracking-widest">{isChatOpen ? 'Close Chat' : 'Live Chat Hub'}</span>
+          </button>
+
           <button 
             onClick={() => router.push('/reports')}
             className="flex items-center gap-2 bg-blue-500/10 hover:bg-blue-600 border border-blue-500/20 px-6 py-3 rounded-2xl transition-all group shadow-xl"
@@ -238,15 +247,15 @@ export default function TeacherDashboard() {
 
           <button 
             onClick={() => setIsIdCardOpen(true)}
-            className="flex items-center gap-2 bg-green-500/10 hover:bg-green-500 border border-green-500/20 px-6 py-3 rounded-2xl transition-all group shadow-xl"
+            className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 px-6 py-3 rounded-2xl transition-all group shadow-xl"
           >
-            <UserRound className="text-green-500 group-hover:text-white transition-transform" size={18} />
-            <span className="text-[10px] font-black uppercase tracking-widest group-hover:text-white text-green-500">My ID Card</span>
+            <UserRound className="text-gray-400 group-hover:text-white" size={18} />
+            <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover:text-white">My ID Card</span>
           </button>
 
           <button 
             onClick={handleLogout}
-            className="flex items-center gap-2 bg-red-500/10 hover:bg-red-500 border border-red-500/20 hover:border-red-600 px-6 py-3 rounded-2xl transition-all group shadow-xl"
+            className="flex items-center gap-2 bg-red-500/10 hover:bg-red-500 border border-red-500/20 px-6 py-3 rounded-2xl transition-all group shadow-xl"
           >
             <LogOut className="text-red-500 group-hover:text-white transition-transform" size={18} />
             <span className="text-[10px] font-black uppercase tracking-widest group-hover:text-white text-red-500">Logout</span>
@@ -254,7 +263,7 @@ export default function TeacherDashboard() {
         </div>
       </div>
 
-      {/* Stats */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-[#161d2f] p-6 rounded-2xl border border-gray-800 shadow-xl transition-transform hover:scale-105">
           <p className="text-gray-400 text-[10px] uppercase font-bold tracking-widest">Teacher Name</p>
@@ -275,6 +284,31 @@ export default function TeacherDashboard() {
           + Add New Subject
         </button>
       </div>
+
+      {/* ✅ REAL-TIME CHAT SECTION (MUHAMMAD AHMED: Fixed Room ID Logic) */}
+      {isChatOpen && (
+        <div className="animate-in slide-in-from-top-4 duration-500">
+            <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-green-500/10 rounded-xl border border-green-500/20">
+                    <MessageCircle className="text-green-500" size={20} />
+                </div>
+                <h2 className="text-xl md:text-2xl font-black italic uppercase tracking-tighter text-white">Student Interaction Hub</h2>
+            </div>
+            {myCourses.length > 0 ? (
+                <ChatBox 
+                    // ✅ FIXED: Using COURSE_ format to match Student Dashboard
+                    roomId={`COURSE_${myCourses[0].id}`} 
+                    userId={teacherId} 
+                    userName={statsData?.teacherName || "Teacher"} 
+                    userRole="teacher"
+                />
+            ) : (
+                <div className="bg-[#161d2f] p-10 rounded-[2.5rem] border border-white/5 text-center text-gray-500 uppercase font-black text-xs italic tracking-widest">
+                    Add a subject to start chatting with students.
+                </div>
+            )}
+        </div>
+      )}
 
       {/* ✅ RESOURCE SHARING (UPLOAD CENTER) */}
       <div id="resource-upload-section" className="mt-12">
