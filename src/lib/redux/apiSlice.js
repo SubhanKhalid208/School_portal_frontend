@@ -16,7 +16,7 @@ export const apiSlice = createApi({
     },
     credentials: 'include', 
   }),
-  // ✅ Added 'Analytics' to tagTypes
+  // ✅ Added 'Analytics' and keeping 'Student' tags
   tagTypes: ['Quiz', 'Attendance', 'Course', 'MCQ', 'Result', 'User', 'Admin', 'Student', 'Auth', 'Analytics'], 
   endpoints: (builder) => ({
     
@@ -34,8 +34,7 @@ export const apiSlice = createApi({
       providesTags: ['Attendance'] 
     }),
 
-    // --- STUDENT ANALYTICS (Naya Feature: Charts ke liye) ---
-    // ✅ Yeh query backend se quiz trends aur attendance trends laati hai
+    // --- STUDENT ANALYTICS ---
     getStudentAnalytics: builder.query({
       query: (studentId) => `/student/analytics/${studentId}`,
       providesTags: ['Analytics'],
@@ -106,6 +105,13 @@ export const apiSlice = createApi({
       query: (id) => ({ url: `/teacher/courses/${id}`, method: 'DELETE' }), 
       invalidatesTags: ['Course'] 
     }),
+    
+    // ✅ Muhammad Ahmed: New query for Chat Sidebar
+    getAllStudents: builder.query({ 
+      query: () => '/teacher/all-students', 
+      providesTags: ['Student'] 
+    }),
+
     getTeacherStudents: builder.query({ query: () => '/teacher/students', providesTags: ['Student'] }),
 
     // --- QUIZ MANAGEMENT ---
@@ -195,4 +201,6 @@ export const {
   useGetStudentAttendanceQuery,
   useGetAuthUsersQuery,
   useGetStudentAnalyticsQuery,
+  // ✅ Naye hook ko export kiya
+  useGetAllStudentsQuery, 
 } = apiSlice;

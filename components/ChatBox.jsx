@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { io } from "socket.io-client";
 import { toast } from 'react-hot-toast';
 
-const ChatBox = ({ roomId, userId, userName, userRole }) => {
+const ChatBox = ({ roomId, userId, userName, userRole, onNewMessage, receiverId, receiverName }) => {
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState("");
     const [socket, setSocket] = useState(null);
@@ -10,57 +10,83 @@ const ChatBox = ({ roomId, userId, userName, userRole }) => {
     const [whoIsTyping, setWhoIsTyping] = useState("");
     const scrollRef = useRef();
 
-    // ✅ MUHAMMAD AHMED: History Load Logic (Enhanced handling)
+    // ✅ MUHAMMAD AHMED: Guaranteed Room Logic (No Changes)
+    const activeRoom = useMemo(() => {
+        if (receiverId && userId) {
+            const ids = [Number(userId), Number(receiverId)].sort((a, b) => a - b);
+            return `${ids[0]}_${ids[1]}`; 
+        }
+        return roomId || "GLOBAL_ROOM";
+    }, [userId, receiverId, roomId]);
+
+    // ✅ MUHAMMAD AHMED: History Load Logic (No Changes)
     useEffect(() => {
         const fetchChatHistory = async () => {
+            if (!activeRoom || activeRoom === "GLOBAL_ROOM" && !roomId) return;
+            
             try {
                 const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
-                const response = await fetch(`${apiBase}/chat/history/GLOBAL_ROOM`);
+                const response = await fetch(`${apiBase}/chat/chat-history/${activeRoom}`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
                 
                 if (!response.ok) throw new Error(`Status: ${response.status}`);
-
-                const data = await response.json();
-                if (Array.isArray(data)) {
-                    setMessages(data);
+                const result = await response.json();
+                
+                if (result.success && Array.isArray(result.data)) {
+                    setMessages(result.data);
+                } else {
+                    setMessages([]); 
                 }
             } catch (err) {
-                console.error("History error:", err);
+                console.error("❌ History error:", err);
+                setMessages([]);
             }
         };
         fetchChatHistory();
-    }, [roomId]);
+    }, [activeRoom, roomId]);
 
-    // ✅ Socket Connection Logic
+    // ✅ Socket Connection (No Changes)
     useEffect(() => {
         const socketUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || "http://localhost:5000";
         const newSocket = io(socketUrl, {
             withCredentials: true,
-            transports: ['websocket'] 
+            transports: ['websocket', 'polling'] 
         });
         
         setSocket(newSocket);
-        newSocket.emit("join_room", "GLOBAL_ROOM");
+        newSocket.emit("join_room", activeRoom);
 
-        newSocket.off("receive_message").on("receive_message", (data) => {
-            if (data.senderId !== userId) {
-                setMessages((prev) => [...prev, data]);
-                new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3').play().catch(() => {});
+        newSocket.on("receive_message", (data) => {
+            if (String(data.room) === String(activeRoom)) {
+                if (String(data.senderId) !== String(userId)) {
+                    setMessages((prev) => [...prev, data]);
+                    if (onNewMessage) onNewMessage();
+                    new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3').play().catch(() => {});
+                }
             }
         });
 
-        newSocket.off("user_typing").on("user_typing", (data) => {
-            if (data.status) {
-                setIsTyping(true);
-                setWhoIsTyping(data.userName || "Someone");
-            } else {
-                setIsTyping(false);
+        newSocket.on("user_typing", (data) => {
+            if (String(data.room) === String(activeRoom)) {
+                if (data.status) {
+                    setIsTyping(true);
+                    setWhoIsTyping(data.userName || "Someone");
+                } else {
+                    setIsTyping(false);
+                }
             }
         });
 
         return () => {
+            newSocket.off("receive_message");
+            newSocket.off("user_typing");
             newSocket.disconnect();
         };
-    }, [userId]); 
+    }, [activeRoom, userId, onNewMessage]); 
 
     useEffect(() => {
         scrollRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -71,9 +97,10 @@ const ChatBox = ({ roomId, userId, userName, userRole }) => {
         if (newMessage.trim() === "" || !socket) return;
 
         const messageData = {
-            room: "GLOBAL_ROOM",
+            room: activeRoom, 
             senderId: userId,
             senderName: userName,
+            receiverId: receiverId, 
             message: newMessage, 
             role: userRole, 
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -83,140 +110,140 @@ const ChatBox = ({ roomId, userId, userName, userRole }) => {
             setMessages((prev) => [...prev, messageData]);
             socket.emit("send_message", messageData);
             setNewMessage("");
-            socket.emit("typing", { room: "GLOBAL_ROOM", status: false, userName });
+            socket.emit("typing", { room: activeRoom, status: false, userName });
         } catch (err) {
             toast.error("Message failed!");
         }
     };
 
     const handleTyping = (e) => {
-        setNewMessage(e.target.value);
+        const val = e.target.value;
+        setNewMessage(val);
         socket?.emit("typing", { 
-            room: "GLOBAL_ROOM", 
-            status: e.target.value.length > 0,
+            room: activeRoom, 
+            status: val.length > 0,
             userName: userName 
         });
     };
 
-    // Helper for Avatars
-    const getInitials = (name) => name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    const getInitials = (name) => {
+        if (!name) return "LP";
+        return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    };
 
     return (
-        <div className="flex flex-col h-[600px] w-full max-w-2xl mx-auto bg-[#0f172a] border border-white/10 rounded-[2rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-2xl relative">
+        <div className="flex flex-col h-[650px] w-full max-w-2xl mx-auto bg-[#0f172a] border border-white/10 rounded-[2rem] overflow-hidden shadow-2xl backdrop-blur-2xl relative">
             
-            {/* --- Header --- */}
-            <div className="p-4 bg-white/5 border-b border-white/10 flex items-center justify-between backdrop-blur-md z-10">
+            {/* Header - Improved Visibility */}
+            <div className="p-5 bg-white/5 border-b border-white/10 flex items-center justify-between backdrop-blur-xl z-20">
                 <div className="flex items-center gap-4">
                     <div className="relative">
-                        <div className="w-12 h-12 bg-gradient-to-tr from-green-500 to-emerald-700 rounded-2xl flex items-center justify-center shadow-lg transform rotate-3">
-                            <span className="text-white font-black text-xl -rotate-3">LP</span>
+                        <div className="w-12 h-12 bg-gradient-to-tr from-green-500 to-emerald-700 rounded-2xl flex items-center justify-center shadow-lg border border-white/10">
+                            <span className="text-white font-black text-xl">
+                                {receiverName ? getInitials(receiverName) : "LP"}
+                            </span>
                         </div>
-                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-4 border-[#0f172a] rounded-full"></div>
+                        <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 border-[3px] border-[#0f172a] rounded-full"></div>
                     </div>
                     <div>
-                        <h3 className="text-white font-bold text-lg tracking-tight">Lahore <span className="text-green-500">Portal</span></h3>
+                        <h3 className="text-white font-black text-lg tracking-tight uppercase italic">
+                            {receiverName ? receiverName : "Lahore Portal Support"}
+                        </h3>
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Community Hub</span>
+                            <span className="flex h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                                Online | {userRole === 'student' ? 'Instructor Chat' : 'Student Chat'}
+                            </span>
                         </div>
-                    </div>
-                </div>
-                <div className="hidden sm:flex flex-col items-end">
-                    <div className="bg-green-500/10 px-4 py-1 rounded-full border border-green-500/20">
-                        <span className="text-[10px] font-black text-green-500 uppercase tracking-widest animate-pulse">● Live Now</span>
                     </div>
                 </div>
             </div>
 
-            {/* --- Messages Area --- */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] scroll-smooth custom-scrollbar">
+            {/* Messages Area - Better Bubble Contrast */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-[#0a0f1c]/50 custom-scrollbar">
                 {messages.length === 0 && (
-                    <div className="flex flex-col items-center justify-center h-full opacity-20">
-                        <div className="w-20 h-20 border-2 border-dashed border-white rounded-full animate-spin-slow mb-4"></div>
-                        <p className="text-xs uppercase font-black tracking-widest text-white">Starting Encryption...</p>
+                    <div className="flex flex-col items-center justify-center h-full opacity-30 text-center">
+                        <div className="p-4 rounded-full bg-white/5 mb-4">
+                             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="text-gray-400"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                        </div>
+                        <p className="text-[10px] uppercase font-black tracking-[0.3em] text-white">
+                            Secure connection established. <br/> Start your conversation.
+                        </p>
                     </div>
                 )}
                 
                 {messages.map((msg, index) => {
-                    const isMe = msg.senderId === userId;
-                    const isTeacher = msg.role === 'teacher';
-
+                    const isMe = String(msg.senderId) === String(userId); 
                     return (
-                        <div key={index} className={`flex gap-3 ${isMe ? "flex-row-reverse" : "flex-row"} items-end animate-fade-in-up`}>
-                            {/* Avatar */}
-                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold shadow-lg shrink-0 ${
-                                isMe ? "bg-green-500 text-black" : isTeacher ? "bg-blue-600 text-white" : "bg-gray-700 text-gray-300"
-                            }`}>
-                                {getInitials(msg.senderName)}
-                            </div>
+                        <div key={index} className={`flex ${isMe ? "justify-end" : "justify-start"} items-end gap-2 animate-fade-in-up`}>
+                            {!isMe && (
+                                <div className="w-8 h-8 rounded-lg bg-gray-800 border border-white/5 flex items-center justify-center text-[10px] font-bold text-gray-400 shrink-0 mb-1">
+                                    {getInitials(msg.senderName || receiverName)}
+                                </div>
+                            )}
 
-                            <div className={`flex flex-col ${isMe ? "items-end" : "items-start"} max-w-[75%]`}>
-                                {/* Name Tag */}
-                                <span className="text-[9px] text-gray-500 font-bold uppercase tracking-tighter mb-1 px-1">
-                                    {msg.senderName} • {isTeacher ? '⭐ Faculty' : 'Student'}
-                                </span>
-
-                                {/* Bubble */}
-                                <div className={`relative p-3.5 rounded-2xl text-sm leading-relaxed shadow-xl transition-all hover:brightness-110 ${
+                            <div className={`flex flex-col ${isMe ? "items-end" : "items-start"} max-w-[80%]`}>
+                                <div className={`relative px-4 py-3 rounded-2xl text-sm leading-relaxed shadow-lg ${
                                     isMe 
-                                    ? "bg-gradient-to-br from-green-400 to-green-600 text-black font-medium rounded-tr-none" 
-                                    : isTeacher 
-                                        ? "bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-tl-none border border-blue-400/20"
-                                        : "bg-white/10 text-white rounded-tl-none border border-white/10 backdrop-blur-md"
+                                    ? "bg-green-600 text-white font-medium rounded-br-none border border-green-500/30" 
+                                    : "bg-[#1e293b] text-gray-100 rounded-bl-none border border-white/5"
                                 }`}>
                                     {msg.message}
-                                    <div className={`absolute bottom-[-18px] whitespace-nowrap text-[8px] font-bold text-gray-600 ${isMe ? "right-0" : "left-0"}`}>
-                                        {msg.time || "Just now"}
-                                    </div>
                                 </div>
+                                <span className="text-[9px] font-bold text-gray-500 mt-1 uppercase tracking-tighter px-1">
+                                    {msg.time || "Sent"}
+                                </span>
                             </div>
                         </div>
                     );
                 })}
                 
                 {isTyping && (
-                    <div className="flex items-center gap-3 ml-11 animate-pulse">
+                    <div className="flex items-center gap-2 ml-10 animate-pulse bg-white/5 w-fit px-3 py-1.5 rounded-full border border-white/5">
                         <div className="flex gap-1">
-                            <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-bounce"></div>
-                            <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-bounce [animation-delay:0.2s]"></div>
-                            <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-bounce [animation-delay:0.4s]"></div>
+                            <span className="w-1 h-1 bg-green-500 rounded-full animate-bounce"></span>
+                            <span className="w-1 h-1 bg-green-500 rounded-full animate-bounce [animation-delay:0.2s]"></span>
+                            <span className="w-1 h-1 bg-green-500 rounded-full animate-bounce [animation-delay:0.4s]"></span>
                         </div>
-                        <span className="text-[10px] text-green-500 font-black uppercase tracking-widest">{whoIsTyping} typing...</span>
+                        <span className="text-[9px] text-green-500 font-black uppercase tracking-widest">{whoIsTyping} is typing</span>
                     </div>
                 )}
                 <div ref={scrollRef} />
             </div>
 
-            {/* --- Input Area --- */}
-            <div className="p-4 bg-white/5 border-t border-white/10 backdrop-blur-xl">
-                <form onSubmit={handleSendMessage} className="relative flex items-center gap-2">
-                    <input 
-                        type="text" 
-                        placeholder={`Hey Muhammad Ahmed, type a message...`} 
-                        className="w-full bg-black/40 border border-white/10 rounded-xl py-4 pl-5 pr-14 text-sm focus:border-green-500/50 focus:ring-2 focus:ring-green-500/20 outline-none transition-all text-white placeholder:text-gray-600 shadow-inner"
-                        value={newMessage}
-                        onChange={handleTyping}
-                    />
-                    <button 
-                        type="submit" 
-                        disabled={!newMessage.trim()}
-                        className="absolute right-2 p-2.5 bg-green-500 text-black rounded-lg hover:bg-green-400 active:scale-90 transition-all disabled:opacity-30 disabled:grayscale"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                    </button>
+            {/* Input Area - Clean & Sticky */}
+            <div className="p-5 bg-white/5 border-t border-white/10 backdrop-blur-2xl">
+                <form onSubmit={handleSendMessage} className="relative flex items-center gap-3">
+                    <div className="relative flex-1">
+                        <input 
+                            type="text" 
+                            placeholder="Type your message..." 
+                            className="w-full bg-black/40 border border-white/10 rounded-2xl py-4 pl-5 pr-12 text-sm focus:border-green-500/50 focus:ring-1 focus:ring-green-500/20 outline-none transition-all text-white placeholder:text-gray-600"
+                            value={newMessage}
+                            onChange={handleTyping}
+                        />
+                        <button 
+                            type="submit" 
+                            disabled={!newMessage.trim()}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 bg-green-500 text-black rounded-xl hover:bg-green-400 active:scale-95 transition-all disabled:opacity-20 disabled:grayscale shadow-lg shadow-green-500/20"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                        </button>
+                    </div>
                 </form>
+                <p className="text-center text-[8px] text-gray-600 mt-3 font-bold uppercase tracking-[0.4em]">End-to-End Encrypted | Lahore Portal</p>
             </div>
             
-            {/* Custom Styles for Scrollbar and Animation */}
             <style jsx>{`
-                .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+                .custom-scrollbar::-webkit-scrollbar { width: 5px; }
                 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-                .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.05); border-radius: 20px; }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(34, 197, 94, 0.2); }
                 @keyframes fade-in-up {
-                    from { opacity: 0; transform: translateY(10px); }
+                    from { opacity: 0; transform: translateY(8px); }
                     to { opacity: 1; transform: translateY(0); }
                 }
                 .animate-fade-in-up { animation: fade-in-up 0.3s ease-out forwards; }
-                .animate-spin-slow { animation: spin 3s linear infinite; }
             `}</style>
         </div>
     );

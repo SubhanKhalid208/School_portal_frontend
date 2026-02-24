@@ -35,6 +35,9 @@ export default function StudentDashboardPage({ params }) {
   const [isChatOpen, setIsChatOpen] = useState(false); 
   const [userData, setUserData] = useState(null);
 
+  // ✅ MUHAMMAD AHMED: Unread Messages State
+  const [unreadCount, setUnreadCount] = useState(0);
+
   // ✅ Selected Course State for Resources & Chat
   const [selectedCourseForResources, setSelectedCourseForResources] = useState(null);
 
@@ -52,13 +55,21 @@ export default function StudentDashboardPage({ params }) {
     element?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // ✅ Scroll to Chat
+  // ✅ Scroll to Chat & Reset Unread Count
   const scrollToChat = () => {
     setIsChatOpen(true);
+    setUnreadCount(0); 
     setTimeout(() => {
         const element = document.getElementById('chat-section');
         element?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
+  };
+
+  // ✅ Function to handle new incoming messages from ChatBox
+  const handleNewMessage = () => {
+    if (!isChatOpen) {
+        setUnreadCount(prev => prev + 1);
+    }
   };
 
   useEffect(() => {
@@ -159,10 +170,16 @@ export default function StudentDashboardPage({ params }) {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 md:gap-3">
-              <button onClick={scrollToChat} className="flex items-center gap-2 bg-green-500/10 hover:bg-green-500 border border-green-500/20 px-3 md:px-5 py-2 md:py-3 rounded-xl md:rounded-2xl transition-all group shadow-xl text-xs md:text-[10px]">
+              <button onClick={scrollToChat} className="relative flex items-center gap-2 bg-green-500/10 hover:bg-green-500 border border-green-500/20 px-3 md:px-5 py-2 md:py-3 rounded-xl md:rounded-2xl transition-all group shadow-xl text-xs md:text-[10px]">
                 <MessageCircle className="text-green-500 group-hover:text-white transition-transform" size={16} />
                 <span className="font-black uppercase tracking-widest group-hover:text-white text-green-500 hidden sm:inline italic">Live Support</span>
                 <span className="font-black uppercase tracking-widest group-hover:text-white text-green-500 sm:hidden italic">Chat</span>
+                
+                {unreadCount > 0 && !isChatOpen && (
+                    <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-black w-6 h-6 flex items-center justify-center rounded-full border-2 border-[#0a0f1c] animate-bounce shadow-xl">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                )}
               </button>
 
               <button onClick={scrollToResources} className="flex items-center gap-2 bg-blue-500/10 hover:bg-blue-600 border border-blue-500/20 px-3 md:px-5 py-2 md:py-3 rounded-xl md:rounded-2xl transition-all group shadow-xl text-xs md:text-[10px]">
@@ -194,7 +211,7 @@ export default function StudentDashboardPage({ params }) {
         <StatWidget icon={<Calendar size={40}/>} label="Total Academic Days" value={data.totalDays} color="purple" subText="Working sessions in portal" />
       </div>
 
-      {/* ✅ REAL-TIME CHAT HUB SECTION (Muhammad Ahmed: Room ID Fix Applied) */}
+      {/* ✅ MUHAMMAD AHMED: LIVE CHAT HUB - FIXED FOR 31_32 */}
       {isChatOpen && (
         <div id="chat-section" className="mb-16 animate-in fade-in slide-in-from-bottom-5 duration-700">
             <div className="flex items-center justify-between mb-8">
@@ -210,17 +227,14 @@ export default function StudentDashboardPage({ params }) {
             </div>
             
             <div className="bg-[#161d2f]/50 rounded-[2.5rem] border border-white/5 p-2 backdrop-blur-xl shadow-2xl">
-                {selectedCourseForResources ? (
-                    <ChatBox 
-                        // ✅ FIXED: Room ID starts with COURSE_ to match Teacher Panel
-                        roomId={`COURSE_${selectedCourseForResources}`} 
-                        userId={studentId} 
-                        userName={userData?.name || "Muhammad Ahmed"} 
-                        userRole="student"
-                    />
-                ) : (
-                    <div className="py-20 text-center text-gray-500 italic font-black uppercase tracking-[0.2em]">Select a course to start chatting</div>
-                )}
+                <ChatBox 
+                    userId={studentId} 
+                    receiverId={31} // Muhammad Ahmed: 31_32 room banane ke liye
+                    receiverName="Course Instructor"
+                    userName={userData?.name || "Muhammad Ahmed"} 
+                    userRole="student"
+                    onNewMessage={handleNewMessage} 
+                />
             </div>
         </div>
       )}
@@ -275,11 +289,8 @@ export default function StudentDashboardPage({ params }) {
           </div>
         ) : (
           <div className="py-16 md:py-24 text-center border border-white/5 rounded-xl md:rounded-[3rem] bg-[#161d2f]/50 backdrop-blur-sm shadow-inner">
-            <Info className="mx-auto mb-4 md:mb-6 text-blue-500/20" size={48} />
+            <span className="flex justify-center mb-4"><Info className="text-blue-500/20" size={48} /></span>
             <h3 className="text-lg md:text-xl font-black italic uppercase text-gray-400 tracking-tighter">No Courses Found</h3>
-            <p className="text-gray-600 mt-2 max-w-xs mx-auto text-[9px] md:text-xs font-bold uppercase tracking-widest leading-relaxed">
-              Contact Lahore Central Portal to sync your academic records.
-            </p>
           </div>
         )}
       </div>
@@ -318,10 +329,8 @@ function StatWidget({icon, label, value, color, progress, subText}) {
     blue: "text-blue-500 bg-blue-500/5 border-blue-500/10",
     purple: "text-purple-500 bg-purple-500/5 border-purple-500/10"
   };
-
   const currentTheme = colors[color] || colors.green;
   const textColor = currentTheme.split(' ')[0];
-
   return (
     <div className={`bg-[#161d2f] p-4 md:p-8 rounded-xl md:rounded-[2.5rem] border border-white/5 shadow-2xl relative overflow-hidden group hover:bg-white/[0.02] transition-all duration-500`}>
       <div className={`absolute right-4 md:right-6 top-4 md:top-6 opacity-[0.07] group-hover:opacity-20 group-hover:scale-125 transition-all duration-700 ${textColor}`}>
@@ -329,7 +338,6 @@ function StatWidget({icon, label, value, color, progress, subText}) {
       </div>
       <p className="text-gray-500 text-[8px] md:text-[9px] font-black uppercase tracking-[0.3em] mb-2">{label}</p>
       <h2 className={`text-4xl md:text-6xl font-black tracking-tighter ${textColor} italic`}>{value}</h2>
-      
       {progress !== undefined ? (
         <div className="mt-6 md:mt-8">
           <div className="flex justify-between items-center mb-2">

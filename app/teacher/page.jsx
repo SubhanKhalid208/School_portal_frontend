@@ -1,11 +1,11 @@
 'use client'
-import { useState } from 'react';
+import { useState, useEffect } from 'react'; 
 import { useRouter } from 'next/navigation'; 
 import { toast } from 'react-hot-toast';
 import { 
   ClipboardList, Users, Eye, X, Award, Calendar, 
   BookOpen, Trash2, List, AlertTriangle, LogOut,
-  UserRound, Library, BarChart3, MessageCircle 
+  UserRound, Library, BarChart3, MessageCircle, Search 
 } from 'lucide-react';
 import Cookies from 'js-cookie'; 
 
@@ -25,7 +25,8 @@ import {
   useUpdateCourseTeacherMutation,
   useGetQuestionsListQuery,
   useDeleteQuestionMutation,
-  useGetQuizResultsQuery
+  useGetQuizResultsQuery,
+  useGetAllStudentsQuery 
 } from '@/src/lib/redux/apiSlice';
 
 // --- 1. QUESTIONS VIEW MODAL ---
@@ -149,6 +150,7 @@ export default function TeacherDashboard() {
   const { data: coursesData, isLoading: coursesLoading } = useGetTeacherCoursesQuery();
   const { data: quizzes = [], isLoading: quizzesLoading } = useGetTeacherQuizzesQuery();
   const { data: statsData, isLoading: statsLoading } = useGetTeacherStatsQuery();
+  const { data: allStudentsData = [] } = useGetAllStudentsQuery(); 
 
   const [deleteQuiz] = useDeleteQuizMutation();
   const [deleteCourse] = useDeleteCourseTeacherMutation();
@@ -163,6 +165,11 @@ export default function TeacherDashboard() {
   const [editingCourse, setEditingCourse] = useState(null);
   const [formData, setFormData] = useState({ title: '', description: '' });
 
+  // ✅ MUHAMMAD AHMED: States for Private Chat
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
   const myCourses = coursesData?.data || [];
   const teacherId = Cookies.get('userId'); 
 
@@ -171,7 +178,7 @@ export default function TeacherDashboard() {
     Cookies.remove('token'); 
     Cookies.remove('role');
     localStorage.clear();
-    toast.success("Logging out from Teacher Panel...");
+    toast.success("Logging out...");
     window.location.href = '/login';
   };
 
@@ -198,6 +205,28 @@ export default function TeacherDashboard() {
     } catch (err) { toast.error("Server error."); }
   };
 
+  const toggleChat = () => {
+    setIsChatOpen(!isChatOpen);
+    if (!isChatOpen) setUnreadCount(0);
+  };
+
+  const handleNewMessage = () => {
+    if (!isChatOpen) setUnreadCount(prev => prev + 1);
+  };
+
+  // ✅ Logic to generate unique room ID: Example "31_45"
+  const getPrivateRoomId = (studentId) => {
+    if (!teacherId || !studentId) return "GLOBAL_ROOM";
+    const sortedIds = [String(teacherId), String(studentId)].sort();
+    return sortedIds.join("_");
+  };
+
+  // Student filtering logic
+  const studentList = allStudentsData?.data || allStudentsData;
+  const filteredStudents = Array.isArray(studentList) 
+    ? studentList.filter(s => s.name?.toLowerCase().includes(searchQuery.toLowerCase()))
+    : [];
+
   if (coursesLoading || quizzesLoading || statsLoading) return (
     <div className="flex items-center justify-center min-h-screen bg-[#0f172a]">
         <div className="p-10 text-blue-500 text-2xl font-bold animate-pulse italic uppercase">Lahore Portal Loading...</div>
@@ -210,11 +239,7 @@ export default function TeacherDashboard() {
       {viewQuestionsId && <QuestionsModal quizId={viewQuestionsId} onClose={() => setViewQuestionsId(null)} />}
       
       <IdentityCard 
-        user={{
-          id: teacherId,
-          name: statsData?.teacherName,
-          role: 'teacher' 
-        }}
+        user={{ id: teacherId, name: statsData?.teacherName, role: 'teacher' }}
         isOpen={isIdCardOpen}
         onClose={() => setIsIdCardOpen(false)}
       />
@@ -230,111 +255,141 @@ export default function TeacherDashboard() {
         
         <div className="flex items-center gap-3 flex-wrap">
           <button 
-            onClick={() => setIsChatOpen(!isChatOpen)}
-            className={`flex items-center gap-2 ${isChatOpen ? 'bg-green-500 text-black' : 'bg-green-500/10 text-green-500'} border border-green-500/20 px-6 py-3 rounded-2xl transition-all group shadow-xl`}
+            onClick={toggleChat}
+            className={`relative flex items-center gap-2 ${isChatOpen ? 'bg-green-500 text-black' : 'bg-green-500/10 text-green-500'} border border-green-500/20 px-6 py-3 rounded-2xl transition-all shadow-xl`}
           >
             <MessageCircle size={18} />
-            <span className="text-[10px] font-black uppercase tracking-widest">{isChatOpen ? 'Close Chat' : 'Live Chat Hub'}</span>
+            <span className="text-[10px] font-black uppercase tracking-widest">{isChatOpen ? 'Close Chat' : 'Student Messages'}</span>
+            {unreadCount > 0 && !isChatOpen && (
+              <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-black w-6 h-6 flex items-center justify-center rounded-full border-2 border-[#0f172a] animate-bounce">
+                {unreadCount}
+              </span>
+            )}
           </button>
 
-          <button 
-            onClick={() => router.push('/reports')}
-            className="flex items-center gap-2 bg-blue-500/10 hover:bg-blue-600 border border-blue-500/20 px-6 py-3 rounded-2xl transition-all group shadow-xl"
-          >
-            <BarChart3 className="text-blue-500 group-hover:text-white transition-transform" size={18} />
-            <span className="text-[10px] font-black uppercase tracking-widest group-hover:text-white text-blue-500">Analytics Report</span>
+          <button onClick={() => router.push('/reports')} className="flex items-center gap-2 bg-blue-500/10 hover:bg-blue-600 border border-blue-500/20 px-6 py-3 rounded-2xl transition-all group shadow-xl">
+            <BarChart3 className="text-blue-500 group-hover:text-white" size={18} />
+            <span className="text-[10px] font-black uppercase tracking-widest text-blue-500 group-hover:text-white">Analytics</span>
           </button>
 
-          <button 
-            onClick={() => setIsIdCardOpen(true)}
-            className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 px-6 py-3 rounded-2xl transition-all group shadow-xl"
-          >
+          <button onClick={() => setIsIdCardOpen(true)} className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 px-6 py-3 rounded-2xl transition-all group shadow-xl">
             <UserRound className="text-gray-400 group-hover:text-white" size={18} />
             <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover:text-white">My ID Card</span>
           </button>
 
-          <button 
-            onClick={handleLogout}
-            className="flex items-center gap-2 bg-red-500/10 hover:bg-red-500 border border-red-500/20 px-6 py-3 rounded-2xl transition-all group shadow-xl"
-          >
-            <LogOut className="text-red-500 group-hover:text-white transition-transform" size={18} />
-            <span className="text-[10px] font-black uppercase tracking-widest group-hover:text-white text-red-500">Logout</span>
+          <button onClick={handleLogout} className="flex items-center gap-2 bg-red-500/10 hover:bg-red-500 border border-red-500/20 px-6 py-3 rounded-2xl transition-all group shadow-xl">
+            <LogOut className="text-red-500 group-hover:text-white" size={18} />
+            <span className="text-[10px] font-black uppercase tracking-widest text-red-500 group-hover:text-white">Logout</span>
           </button>
         </div>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-[#161d2f] p-6 rounded-2xl border border-gray-800 shadow-xl transition-transform hover:scale-105">
+        <div className="bg-[#161d2f] p-6 rounded-2xl border border-gray-800 shadow-xl">
           <p className="text-gray-400 text-[10px] uppercase font-bold tracking-widest">Teacher Name</p>
           <h3 className="font-black text-lg text-blue-400 italic">{statsData?.teacherName || 'Teacher'}</h3>
         </div>
-        <div className="bg-[#161d2f] p-6 rounded-2xl border border-gray-800 shadow-xl">
-          <p className="text-gray-400 text-[10px] uppercase font-bold tracking-widest">Total Subjects</p>
-          <h3 className="font-black text-2xl text-purple-400">{statsData?.totalSubjects || 0}</h3>
+        <div className="bg-[#161d2f] p-6 rounded-2xl border border-gray-800 shadow-xl font-black text-2xl text-purple-400">
+           <p className="text-gray-400 text-[10px] uppercase font-bold tracking-widest">Subjects</p>
+           {statsData?.totalSubjects || 0}
         </div>
-        <div className="bg-[#161d2f] p-6 rounded-2xl border border-gray-800 shadow-xl">
-          <p className="text-gray-400 text-[10px] uppercase font-bold tracking-widest">Total Students</p>
-          <h3 className="font-black text-2xl text-green-400">{statsData?.totalStudents || 0}</h3>
+        <div className="bg-[#161d2f] p-6 rounded-2xl border border-gray-800 shadow-xl font-black text-2xl text-green-400">
+           <p className="text-gray-400 text-[10px] uppercase font-bold tracking-widest">Students</p>
+           {statsData?.totalStudents || 0}
         </div>
-        <button 
-          onClick={() => { setEditingCourse(null); setFormData({title:'', description:''}); setShowModal(true); }}
-          className="bg-[#161d2f] p-6 rounded-2xl border border-orange-500/30 border-dashed flex items-center justify-center text-orange-400 font-black uppercase text-xs hover:bg-orange-500/10 transition-all shadow-xl"
-        >
+        <button onClick={() => { setEditingCourse(null); setFormData({title:'', description:''}); setShowModal(true); }} className="bg-[#161d2f] p-6 rounded-2xl border border-orange-500/30 border-dashed flex items-center justify-center text-orange-400 font-black uppercase text-xs hover:bg-orange-500/10 transition-all shadow-xl">
           + Add New Subject
         </button>
       </div>
 
-      {/* ✅ REAL-TIME CHAT SECTION (MUHAMMAD AHMED: Fixed Room ID Logic) */}
+      {/* ✅ UPGRADED CHAT SYSTEM */}
       {isChatOpen && (
         <div className="animate-in slide-in-from-top-4 duration-500">
-            <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-green-500/10 rounded-xl border border-green-500/20">
-                    <MessageCircle className="text-green-500" size={20} />
-                </div>
-                <h2 className="text-xl md:text-2xl font-black italic uppercase tracking-tighter text-white">Student Interaction Hub</h2>
-            </div>
-            {myCourses.length > 0 ? (
-                <ChatBox 
-                    // ✅ FIXED: Using COURSE_ format to match Student Dashboard
-                    roomId={`COURSE_${myCourses[0].id}`} 
-                    userId={teacherId} 
-                    userName={statsData?.teacherName || "Teacher"} 
-                    userRole="teacher"
-                />
-            ) : (
-                <div className="bg-[#161d2f] p-10 rounded-[2.5rem] border border-white/5 text-center text-gray-500 uppercase font-black text-xs italic tracking-widest">
-                    Add a subject to start chatting with students.
-                </div>
-            )}
+           <div className="flex flex-col md:flex-row h-[600px] bg-[#161d2f] rounded-[2.5rem] border border-white/5 overflow-hidden shadow-2xl">
+             
+             {/* --- SIDEBAR: Students List --- */}
+             <div className="w-full md:w-1/3 border-r border-white/5 flex flex-col bg-black/20">
+               <div className="p-6 border-b border-white/5">
+                 <h3 className="text-sm font-black italic text-blue-400 uppercase tracking-widest mb-4">Registered Students</h3>
+                 <div className="relative">
+                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
+                   <input 
+                     type="text" 
+                     placeholder="Search student..." 
+                     className="w-full bg-white/5 border border-white/10 rounded-xl py-2 pl-10 pr-4 text-xs outline-none focus:border-blue-500/50"
+                     value={searchQuery}
+                     onChange={(e) => setSearchQuery(e.target.value)}
+                   />
+                 </div>
+               </div>
+               
+               <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                 {filteredStudents.length > 0 ? (
+                   filteredStudents.map((std) => (
+                     <div 
+                       key={std.id}
+                       onClick={() => setSelectedStudent(std)}
+                       className={`p-4 rounded-2xl cursor-pointer transition-all flex items-center gap-3 ${selectedStudent?.id === std.id ? 'bg-blue-600 shadow-lg shadow-blue-600/20' : 'hover:bg-white/5'}`}
+                     >
+                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center font-black text-xs overflow-hidden">
+                         {std.profile_pic ? (
+                            <img src={std.profile_pic} alt="pic" className="w-full h-full object-cover" />
+                         ) : (
+                            <span>{std.name?.charAt(0)}</span>
+                         )}
+                       </div>
+                       <div>
+                         <p className={`text-sm font-bold uppercase ${selectedStudent?.id === std.id ? 'text-white' : 'text-gray-300'}`}>{std.name}</p>
+                         <p className="text-[9px] opacity-50 italic uppercase tracking-tighter">ID: {std.id}</p>
+                       </div>
+                     </div>
+                   ))
+                 ) : (
+                   <p className="text-center text-[10px] text-gray-600 mt-10 uppercase font-black">No students found</p>
+                 )}
+               </div>
+             </div>
+
+             {/* --- MAIN: Private Chat Box --- */}
+             <div className="flex-1 flex flex-col relative bg-black/10">
+               {selectedStudent ? (
+                 <ChatBox 
+                   roomId={getPrivateRoomId(selectedStudent.id)}
+                   userId={teacherId}
+                   userName={statsData?.teacherName || "Teacher"}
+                   userRole="teacher"
+                   receiverId={selectedStudent.id}
+                   receiverName={selectedStudent.name}
+                   onNewMessage={handleNewMessage}
+                 />
+               ) : (
+                 <div className="m-auto text-center opacity-20">
+                   <MessageCircle size={60} className="mx-auto mb-4" />
+                   <p className="text-xs font-black uppercase tracking-[0.3em]">Select a student to start a private conversation</p>
+                 </div>
+               )}
+             </div>
+           </div>
         </div>
       )}
 
-      {/* ✅ RESOURCE SHARING (UPLOAD CENTER) */}
-      <div id="resource-upload-section" className="mt-12">
+      {/* Resource Center */}
+      <div className="mt-12">
         <div className="flex items-center gap-3 mb-6">
-          <div className="p-2 bg-blue-500/10 rounded-xl border border-blue-500/20">
-            <Library className="text-blue-500" size={20} />
-          </div>
-          <h2 className="text-xl md:text-2xl font-black italic uppercase tracking-tighter text-white">Study Material Center</h2>
+          <div className="p-2 bg-blue-500/10 rounded-xl border border-blue-500/20"><Library className="text-blue-500" size={20} /></div>
+          <h2 className="text-xl md:text-2xl font-black italic uppercase tracking-tighter">Study Material Center</h2>
         </div>
-        
         <div className="bg-[#161d2f]/50 rounded-[2.5rem] border border-white/5 p-2 backdrop-blur-md">
           {myCourses.length > 0 ? (
-            <ResourceCenter 
-              courseId={myCourses[0].id} 
-              userRole="teacher" 
-              userId={teacherId} 
-            />
+            <ResourceCenter courseId={myCourses[0].id} userRole="teacher" userId={teacherId} />
           ) : (
-            <div className="py-20 text-center text-gray-500 font-black uppercase tracking-widest">
-              Please add a subject first to upload resources.
-            </div>
+            <div className="py-20 text-center text-gray-500 font-black uppercase tracking-widest">Add a subject to upload resources.</div>
           )}
         </div>
       </div>
 
-      {/* TABLE 1: SUBJECTS */}
+      {/* TABLE 1: Subjects */}
       <div className="bg-[#161d2f] rounded-[2rem] border border-white/5 overflow-hidden shadow-2xl mt-10">
         <div className="p-6 border-b border-white/5 flex justify-between items-center bg-white/5">
           <h2 className="text-xl font-black italic uppercase tracking-tighter flex items-center gap-2">
@@ -344,20 +399,16 @@ export default function TeacherDashboard() {
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead className="bg-black/20 text-gray-500 text-[10px] uppercase font-black tracking-widest">
-              <tr>
-                <th className="p-5">Subject Name</th>
-                <th className="p-5">Description</th>
-                <th className="p-5 text-right">Actions</th>
-              </tr>
+              <tr><th className="p-5">Subject Name</th><th className="p-5">Description</th><th className="p-5 text-right">Actions</th></tr>
             </thead>
             <tbody className="divide-y divide-white/5">
               {myCourses.map((course) => (
                 <tr key={course.id} className="hover:bg-white/5 transition-all group">
-                  <td className="p-5 font-bold text-blue-300 group-hover:text-blue-100 italic uppercase">{course.name || course.title}</td>
-                  <td className="p-5 text-gray-400 text-sm max-w-[300px] truncate">{course.description || "No description provided."}</td>
+                  <td className="p-5 font-bold text-blue-300 italic uppercase">{course.name || course.title}</td>
+                  <td className="p-5 text-gray-400 text-sm max-w-[300px] truncate">{course.description || "No description."}</td>
                   <td className="p-5 text-right space-x-4">
-                    <button onClick={() => { setEditingCourse(course); setFormData({title: course.name || course.title, description: course.description}); setShowModal(true); }} className="text-blue-400 hover:text-blue-200 font-black text-[10px] uppercase transition-colors">Edit</button>
-                    <button onClick={() => deleteCourse(course.id)} className="text-red-500 hover:text-red-300 font-black text-[10px] uppercase transition-colors">Delete</button>
+                    <button onClick={() => { setEditingCourse(course); setFormData({title: course.name || course.title, description: course.description}); setShowModal(true); }} className="text-blue-400 hover:text-blue-200 font-black text-[10px] uppercase">Edit</button>
+                    <button onClick={() => deleteCourse(course.id)} className="text-red-500 hover:text-red-300 font-black text-[10px] uppercase">Delete</button>
                   </td>
                 </tr>
               ))}
@@ -366,8 +417,8 @@ export default function TeacherDashboard() {
         </div>
       </div>
 
-      {/* TABLE 2: QUIZZES */}
-      <div className="bg-[#161d2f] rounded-[2rem] border border-white/5 overflow-hidden shadow-2xl">
+      {/* TABLE 2: Quizzes */}
+      <div className="bg-[#161d2f] rounded-[2rem] border border-white/5 overflow-hidden shadow-2xl mt-10">
         <div className="p-6 border-b border-white/5 flex justify-between items-center bg-white/5">
           <h2 className="text-xl font-black italic uppercase tracking-tighter flex items-center gap-2">
             <ClipboardList className="text-green-500" size={20} /> My Managed Quizzes
@@ -376,28 +427,18 @@ export default function TeacherDashboard() {
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead className="bg-black/20 text-gray-500 text-[10px] uppercase font-black tracking-widest">
-              <tr>
-                <th className="p-5">Quiz Title</th>
-                <th className="p-5 text-center">Total Marks</th>
-                <th className="p-5 text-right">Management & Performance</th>
-              </tr>
+              <tr><th className="p-5">Quiz Title</th><th className="p-5 text-center">Marks</th><th className="p-5 text-right">Performance</th></tr>
             </thead>
             <tbody className="divide-y divide-white/5">
               {quizzes.map((quiz) => (
-                <tr key={quiz.id} className="hover:bg-white/5 transition-all group">
+                <tr key={quiz.id} className="hover:bg-white/5 transition-all">
                   <td className="p-5 font-bold text-green-300 italic uppercase">{quiz.title}</td>
                   <td className="p-5 text-center font-black text-xl text-white">{quiz.total_marks}</td>
                   <td className="p-5 text-right">
-                    <div className="flex justify-end items-center gap-3">
-                      <button onClick={() => setViewQuestionsId(quiz.id)} className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-xl font-black uppercase text-[10px] flex items-center gap-2">
-                        <List size={14} /> MCQs
-                      </button>
-                      <button onClick={() => setSelectedQuizId(quiz.id)} className="bg-green-500 hover:bg-green-400 text-black px-3 py-2 rounded-xl font-black uppercase text-[10px] flex items-center gap-2">
-                        <Eye size={14} /> Results
-                      </button>
-                      <button onClick={() => handleDeleteQuizAction(quiz.id)} className="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white px-3 py-2 rounded-xl font-black uppercase text-[10px] flex items-center gap-2 border border-red-500/20 transition-all">
-                        <Trash2 size={14} /> Delete
-                      </button>
+                    <div className="flex justify-end gap-3">
+                      <button onClick={() => setViewQuestionsId(quiz.id)} className="bg-blue-600 text-white px-3 py-2 rounded-xl font-black uppercase text-[10px]">MCQs</button>
+                      <button onClick={() => setSelectedQuizId(quiz.id)} className="bg-green-500 text-black px-3 py-2 rounded-xl font-black uppercase text-[10px]">Results</button>
+                      <button onClick={() => handleDeleteQuizAction(quiz.id)} className="bg-red-500/10 text-red-500 px-3 py-2 rounded-xl font-black uppercase text-[10px] border border-red-500/20">Delete</button>
                     </div>
                   </td>
                 </tr>
@@ -411,24 +452,27 @@ export default function TeacherDashboard() {
       {showModal && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 backdrop-blur-md">
           <div className="bg-[#161d2f] border border-white/10 p-8 rounded-[2.5rem] w-full max-w-md shadow-2xl">
-            <h2 className="text-2xl font-black mb-6 text-white italic uppercase tracking-tighter">{editingCourse ? 'Edit Subject' : 'Add New Subject'}</h2>
+            <h2 className="text-2xl font-black mb-6 text-white italic uppercase">{editingCourse ? 'Edit Subject' : 'Add New Subject'}</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="text-[10px] uppercase font-black text-gray-500 tracking-widest ml-1">Subject Title</label>
-                <input type="text" className="w-full bg-black/40 border border-white/10 p-4 rounded-xl mt-1 outline-none text-sm" value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} required />
-              </div>
-              <div>
-                <label className="text-[10px] uppercase font-black text-gray-500 tracking-widest ml-1">Description</label>
-                <textarea className="w-full bg-black/40 border border-white/10 p-4 rounded-xl mt-1 outline-none h-28 text-sm" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} />
-              </div>
+              <div><label className="text-[10px] uppercase font-black text-gray-500">Subject Title</label>
+              <input type="text" className="w-full bg-black/40 border border-white/10 p-4 rounded-xl mt-1 text-sm outline-none" value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} required /></div>
+              <div><label className="text-[10px] uppercase font-black text-gray-500">Description</label>
+              <textarea className="w-full bg-black/40 border border-white/10 p-4 rounded-xl mt-1 h-28 text-sm outline-none" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} /></div>
               <div className="flex gap-3 mt-6">
-                <button type="button" onClick={() => setShowModal(false)} className="flex-1 bg-white/5 py-4 rounded-xl hover:bg-white/10 transition-colors uppercase font-bold text-xs">Cancel</button>
-                <button type="submit" className="flex-1 bg-blue-600 py-4 rounded-xl font-black uppercase text-xs hover:bg-blue-500 transition-colors shadow-lg shadow-blue-500/20 tracking-widest">Save Subject</button>
+                <button type="button" onClick={() => setShowModal(false)} className="flex-1 bg-white/5 py-4 rounded-xl font-bold text-xs">Cancel</button>
+                <button type="submit" className="flex-1 bg-blue-600 py-4 rounded-xl font-black text-xs">Save Subject</button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {/* Custom Styles for Scrollbar */}
+      <style jsx>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+      `}</style>
     </div>
   );
 }
