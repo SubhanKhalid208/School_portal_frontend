@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { io } from "socket.io-client";
 import { toast } from 'react-hot-toast';
+import axios from 'axios';
 
 const ChatBox = ({ roomId, userId, userName, userRole, onNewMessage, receiverId, receiverName }) => {
     const [messages, setMessages] = useState([]);
@@ -8,9 +9,13 @@ const ChatBox = ({ roomId, userId, userName, userRole, onNewMessage, receiverId,
     const [socket, setSocket] = useState(null);
     const [isTyping, setIsTyping] = useState(false);
     const [whoIsTyping, setWhoIsTyping] = useState("");
+    const [uploading, setUploading] = useState(false);
     const scrollRef = useRef();
+    const fileInputRef = useRef();
 
-    // ✅ MUHAMMAD AHMED: Guaranteed Room Logic (No Changes)
+    // Muhammad Ahmed: Base URL configuration
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+
     const activeRoom = useMemo(() => {
         if (receiverId && userId) {
             const ids = [Number(userId), Number(receiverId)].sort((a, b) => a - b);
@@ -19,23 +24,18 @@ const ChatBox = ({ roomId, userId, userName, userRole, onNewMessage, receiverId,
         return roomId || "GLOBAL_ROOM";
     }, [userId, receiverId, roomId]);
 
-    // ✅ MUHAMMAD AHMED: History Load Logic (No Changes)
     useEffect(() => {
         const fetchChatHistory = async () => {
-            if (!activeRoom || activeRoom === "GLOBAL_ROOM" && !roomId) return;
-            
+            if (!activeRoom || (activeRoom === "GLOBAL_ROOM" && !roomId)) return;
             try {
-                const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
                 const response = await fetch(`${apiBase}/chat/chat-history/${activeRoom}`, {
                     headers: {
                         'Authorization': `Bearer ${localStorage.getItem('token')}`,
                         'Content-Type': 'application/json'
                     }
                 });
-                
                 if (!response.ok) throw new Error(`Status: ${response.status}`);
                 const result = await response.json();
-                
                 if (result.success && Array.isArray(result.data)) {
                     setMessages(result.data);
                 } else {
@@ -47,9 +47,8 @@ const ChatBox = ({ roomId, userId, userName, userRole, onNewMessage, receiverId,
             }
         };
         fetchChatHistory();
-    }, [activeRoom, roomId]);
+    }, [activeRoom, roomId, apiBase]);
 
-    // ✅ Socket Connection (No Changes)
     useEffect(() => {
         const socketUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || "http://localhost:5000";
         const newSocket = io(socketUrl, {
@@ -91,6 +90,49 @@ const ChatBox = ({ roomId, userId, userName, userRole, onNewMessage, receiverId,
     useEffect(() => {
         scrollRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages, isTyping]);
+
+    const handleFileUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            setUploading(true);
+            // Muhammad Ahmed: Token add kiya gaya hai taake backend request reject na kare
+            const res = await axios.post(`${apiBase}/chat/upload`, formData, {
+                headers: { 
+                    'Content-Type': 'multipart/form-data',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+
+            if (res.data.success) {
+                const messageData = {
+                    room: activeRoom,
+                    senderId: userId,
+                    senderName: userName,
+                    receiverId: receiverId,
+                    message: "", 
+                    fileUrl: res.data.fileUrl,
+                    fileName: res.data.fileName,
+                    role: userRole,
+                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                };
+
+                setMessages((prev) => [...prev, messageData]);
+                socket.emit("send_message", messageData);
+                toast.success("File sent!");
+            }
+        } catch (err) {
+            toast.error("Upload failed! Check Console.");
+            console.error("Upload Error:", err.response?.data || err.message);
+        } finally {
+            setUploading(false);
+            if (e.target) e.target.value = null; 
+        }
+    };
 
     const handleSendMessage = async (e) => {
         e.preventDefault();
@@ -134,7 +176,7 @@ const ChatBox = ({ roomId, userId, userName, userRole, onNewMessage, receiverId,
     return (
         <div className="flex flex-col h-[650px] w-full max-w-2xl mx-auto bg-[#0f172a] border border-white/10 rounded-[2rem] overflow-hidden shadow-2xl backdrop-blur-2xl relative">
             
-            {/* Header - Improved Visibility */}
+            {/* Header */}
             <div className="p-5 bg-white/5 border-b border-white/10 flex items-center justify-between backdrop-blur-xl z-20">
                 <div className="flex items-center gap-4">
                     <div className="relative">
@@ -159,13 +201,10 @@ const ChatBox = ({ roomId, userId, userName, userRole, onNewMessage, receiverId,
                 </div>
             </div>
 
-            {/* Messages Area - Better Bubble Contrast */}
+            {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-[#0a0f1c]/50 custom-scrollbar">
                 {messages.length === 0 && (
                     <div className="flex flex-col items-center justify-center h-full opacity-30 text-center">
-                        <div className="p-4 rounded-full bg-white/5 mb-4">
-                             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="text-gray-400"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                        </div>
                         <p className="text-[10px] uppercase font-black tracking-[0.3em] text-white">
                             Secure connection established. <br/> Start your conversation.
                         </p>
@@ -174,6 +213,8 @@ const ChatBox = ({ roomId, userId, userName, userRole, onNewMessage, receiverId,
                 
                 {messages.map((msg, index) => {
                     const isMe = String(msg.senderId) === String(userId); 
+                    const serverUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || "http://localhost:5000";
+                    
                     return (
                         <div key={index} className={`flex ${isMe ? "justify-end" : "justify-start"} items-end gap-2 animate-fade-in-up`}>
                             {!isMe && (
@@ -188,7 +229,30 @@ const ChatBox = ({ roomId, userId, userName, userRole, onNewMessage, receiverId,
                                     ? "bg-green-600 text-white font-medium rounded-br-none border border-green-500/30" 
                                     : "bg-[#1e293b] text-gray-100 rounded-bl-none border border-white/5"
                                 }`}>
-                                    {msg.message}
+                                    {msg.message && <p>{msg.message}</p>}
+
+                                    {msg.fileUrl && (
+                                        <div className="mt-2">
+                                            {msg.fileUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
+                                                <img 
+                                                    src={`${serverUrl}${msg.fileUrl}`} 
+                                                    alt="upload" 
+                                                    className="max-w-full rounded-lg border border-white/10 cursor-pointer hover:opacity-80"
+                                                    onClick={() => window.open(`${serverUrl}${msg.fileUrl}`, '_blank')}
+                                                />
+                                            ) : (
+                                                <a 
+                                                    href={`${serverUrl}${msg.fileUrl}`} 
+                                                    target="_blank" 
+                                                    rel="noreferrer"
+                                                    className="flex items-center gap-2 bg-black/20 p-2 rounded-lg hover:bg-black/30 transition-all underline decoration-dotted"
+                                                >
+                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+                                                    <span className="truncate max-w-[150px] text-xs">{msg.fileName || 'View Document'}</span>
+                                                </a>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                                 <span className="text-[9px] font-bold text-gray-500 mt-1 uppercase tracking-tighter px-1">
                                     {msg.time || "Sent"}
@@ -200,20 +264,37 @@ const ChatBox = ({ roomId, userId, userName, userRole, onNewMessage, receiverId,
                 
                 {isTyping && (
                     <div className="flex items-center gap-2 ml-10 animate-pulse bg-white/5 w-fit px-3 py-1.5 rounded-full border border-white/5">
-                        <div className="flex gap-1">
-                            <span className="w-1 h-1 bg-green-500 rounded-full animate-bounce"></span>
-                            <span className="w-1 h-1 bg-green-500 rounded-full animate-bounce [animation-delay:0.2s]"></span>
-                            <span className="w-1 h-1 bg-green-500 rounded-full animate-bounce [animation-delay:0.4s]"></span>
-                        </div>
                         <span className="text-[9px] text-green-500 font-black uppercase tracking-widest">{whoIsTyping} is typing</span>
                     </div>
                 )}
                 <div ref={scrollRef} />
             </div>
 
-            {/* Input Area - Clean & Sticky */}
+            {/* Input Area */}
             <div className="p-5 bg-white/5 border-t border-white/10 backdrop-blur-2xl">
                 <form onSubmit={handleSendMessage} className="relative flex items-center gap-3">
+                    
+                    <button 
+                        type="button"
+                        onClick={() => fileInputRef.current.click()}
+                        disabled={uploading}
+                        className="p-3 bg-white/5 border border-white/10 rounded-2xl text-gray-400 hover:text-green-500 hover:border-green-500/50 transition-all disabled:opacity-50"
+                    >
+                        {uploading ? (
+                            <div className="w-5 h-5 border-2 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.51a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                        )}
+                    </button>
+
+                    <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        onChange={handleFileUpload} 
+                        className="hidden" 
+                        accept="image/*,.pdf,.doc,.docx"
+                    />
+
                     <div className="relative flex-1">
                         <input 
                             type="text" 
@@ -224,8 +305,8 @@ const ChatBox = ({ roomId, userId, userName, userRole, onNewMessage, receiverId,
                         />
                         <button 
                             type="submit" 
-                            disabled={!newMessage.trim()}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 bg-green-500 text-black rounded-xl hover:bg-green-400 active:scale-95 transition-all disabled:opacity-20 disabled:grayscale shadow-lg shadow-green-500/20"
+                            disabled={!newMessage.trim() && !uploading}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 bg-green-500 text-black rounded-xl hover:bg-green-400 active:scale-95 transition-all disabled:opacity-20 shadow-lg"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
                         </button>
@@ -238,7 +319,6 @@ const ChatBox = ({ roomId, userId, userName, userRole, onNewMessage, receiverId,
                 .custom-scrollbar::-webkit-scrollbar { width: 5px; }
                 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
                 .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.05); border-radius: 20px; }
-                .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(34, 197, 94, 0.2); }
                 @keyframes fade-in-up {
                     from { opacity: 0; transform: translateY(8px); }
                     to { opacity: 1; transform: translateY(0); }
