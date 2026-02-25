@@ -177,17 +177,17 @@ export default function TeacherDashboard() {
   const handleStudentClick = async (student) => {
     setSelectedStudent(student);
     try {
-        // Backend mark-read API call
-        await axios.put(`http://localhost:5000/api/teacher/chat/mark-read/${student.id}`, {}, {
+        // Backend mark-read API call - Ab ye dynamic hai
+        await axios.put(`${API_BASE_URL}/api/teacher/chat/mark-read/${student.id}`, {}, {
             headers: { 'Authorization': `Bearer ${Cookies.get('token')}` }
         });
-        // Refetch stats and students to clear red badges
+        
         refetchStats();
         refetchStudents();
     } catch (err) {
         console.error("Mark read error:", err);
     }
-  };
+};
 
   const handleLogout = () => {
     Cookies.remove('userId');
