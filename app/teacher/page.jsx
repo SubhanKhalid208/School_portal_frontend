@@ -30,6 +30,9 @@ import {
   useGetAllStudentsQuery 
 } from '@/src/lib/redux/apiSlice';
 
+// ✅ MUHAMMAD AHMED: Global URL define kar di hai takay error khatm ho jaye
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
 // --- 1. QUESTIONS VIEW MODAL ---
 function QuestionsModal({ quizId, onClose }) {
   const { data: questions = [], isLoading } = useGetQuestionsListQuery(quizId);
