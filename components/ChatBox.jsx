@@ -13,8 +13,9 @@ const ChatBox = ({ roomId, userId, userName, userRole, onNewMessage, receiverId,
     const scrollRef = useRef();
     const fileInputRef = useRef();
 
-    // Muhammad Ahmed: Base URL configuration
+    // Muhammad Ahmed: API Configuration
     const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+    const serverUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || "http://localhost:5000";
 
     const activeRoom = useMemo(() => {
         if (receiverId && userId) {
@@ -24,6 +25,7 @@ const ChatBox = ({ roomId, userId, userName, userRole, onNewMessage, receiverId,
         return roomId || "GLOBAL_ROOM";
     }, [userId, receiverId, roomId]);
 
+    // Fetch Chat History
     useEffect(() => {
         const fetchChatHistory = async () => {
             if (!activeRoom || (activeRoom === "GLOBAL_ROOM" && !roomId)) return;
@@ -49,18 +51,23 @@ const ChatBox = ({ roomId, userId, userName, userRole, onNewMessage, receiverId,
         fetchChatHistory();
     }, [activeRoom, roomId, apiBase]);
 
+    // Socket Connection Logic
     useEffect(() => {
-        const socketUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || "http://localhost:5000";
-        const newSocket = io(socketUrl, {
+        const newSocket = io(serverUrl, {
             withCredentials: true,
             transports: ['websocket', 'polling'] 
         });
         
         setSocket(newSocket);
-        newSocket.emit("join_room", activeRoom);
+
+        newSocket.on("connect", () => {
+            newSocket.emit("join_room", activeRoom);
+        });
 
         newSocket.on("receive_message", (data) => {
+            // Check if message belongs to current room
             if (String(data.room) === String(activeRoom)) {
+                // Check if message is not from current user to avoid duplicates
                 if (String(data.senderId) !== String(userId)) {
                     setMessages((prev) => [...prev, data]);
                     if (onNewMessage) onNewMessage();
@@ -85,8 +92,9 @@ const ChatBox = ({ roomId, userId, userName, userRole, onNewMessage, receiverId,
             newSocket.off("user_typing");
             newSocket.disconnect();
         };
-    }, [activeRoom, userId, onNewMessage]); 
+    }, [activeRoom, userId, onNewMessage, serverUrl]); 
 
+    // Auto Scroll to Bottom
     useEffect(() => {
         scrollRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages, isTyping]);
@@ -100,7 +108,6 @@ const ChatBox = ({ roomId, userId, userName, userRole, onNewMessage, receiverId,
 
         try {
             setUploading(true);
-            // Muhammad Ahmed: Token add kiya gaya hai taake backend request reject na kare
             const res = await axios.post(`${apiBase}/chat/upload`, formData, {
                 headers: { 
                     'Content-Type': 'multipart/form-data',
@@ -126,7 +133,7 @@ const ChatBox = ({ roomId, userId, userName, userRole, onNewMessage, receiverId,
                 toast.success("File sent!");
             }
         } catch (err) {
-            toast.error("Upload failed! Check Console.");
+            toast.error("Upload failed!");
             console.error("Upload Error:", err.response?.data || err.message);
         } finally {
             setUploading(false);
@@ -213,7 +220,6 @@ const ChatBox = ({ roomId, userId, userName, userRole, onNewMessage, receiverId,
                 
                 {messages.map((msg, index) => {
                     const isMe = String(msg.senderId) === String(userId); 
-                    const serverUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || "http://localhost:5000";
                     
                     return (
                         <div key={index} className={`flex ${isMe ? "justify-end" : "justify-start"} items-end gap-2 animate-fade-in-up`}>

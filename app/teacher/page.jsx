@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'; 
 import { useRouter } from 'next/navigation'; 
 import { toast } from 'react-hot-toast';
+import axios from 'axios'; // ✅ Muhammad Ahmed: API call ke liye
 import { 
   ClipboardList, Users, Eye, X, Award, Calendar, 
   BookOpen, Trash2, List, AlertTriangle, LogOut,
@@ -149,8 +150,8 @@ export default function TeacherDashboard() {
   const router = useRouter(); 
   const { data: coursesData, isLoading: coursesLoading } = useGetTeacherCoursesQuery();
   const { data: quizzes = [], isLoading: quizzesLoading } = useGetTeacherQuizzesQuery();
-  const { data: statsData, isLoading: statsLoading } = useGetTeacherStatsQuery();
-  const { data: allStudentsData = [] } = useGetAllStudentsQuery(); 
+  const { data: statsData, isLoading: statsLoading, refetch: refetchStats } = useGetTeacherStatsQuery();
+  const { data: allStudentsData = [], refetch: refetchStudents } = useGetAllStudentsQuery(); 
 
   const [deleteQuiz] = useDeleteQuizMutation();
   const [deleteCourse] = useDeleteCourseTeacherMutation();
@@ -166,12 +167,27 @@ export default function TeacherDashboard() {
   const [formData, setFormData] = useState({ title: '', description: '' });
 
   // ✅ MUHAMMAD AHMED: States for Private Chat
-  const [unreadCount, setUnreadCount] = useState(0);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   const myCourses = coursesData?.data || [];
   const teacherId = Cookies.get('userId'); 
+
+  // ✅ MUHAMMAD AHMED: Mark as Read Logic
+  const handleStudentClick = async (student) => {
+    setSelectedStudent(student);
+    try {
+        // Backend mark-read API call
+        await axios.put(`http://localhost:5000/api/teacher/chat/mark-read/${student.id}`, {}, {
+            headers: { 'Authorization': `Bearer ${Cookies.get('token')}` }
+        });
+        // Refetch stats and students to clear red badges
+        refetchStats();
+        refetchStudents();
+    } catch (err) {
+        console.error("Mark read error:", err);
+    }
+  };
 
   const handleLogout = () => {
     Cookies.remove('userId');
@@ -207,11 +223,12 @@ export default function TeacherDashboard() {
 
   const toggleChat = () => {
     setIsChatOpen(!isChatOpen);
-    if (!isChatOpen) setUnreadCount(0);
   };
 
   const handleNewMessage = () => {
-    if (!isChatOpen) setUnreadCount(prev => prev + 1);
+    // Refresh student list and stats to show new unread counts
+    refetchStudents();
+    refetchStats();
   };
 
   // ✅ Logic to generate unique room ID: Example "31_45"
@@ -260,9 +277,11 @@ export default function TeacherDashboard() {
           >
             <MessageCircle size={18} />
             <span className="text-[10px] font-black uppercase tracking-widest">{isChatOpen ? 'Close Chat' : 'Student Messages'}</span>
-            {unreadCount > 0 && !isChatOpen && (
+            
+            {/* ✅ Muhammad Ahmed: Main Button Badge - Showing total global unread */}
+            {statsData?.totalUnreadMessages > 0 && !isChatOpen && (
               <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-black w-6 h-6 flex items-center justify-center rounded-full border-2 border-[#0f172a] animate-bounce">
-                {unreadCount}
+                {statsData.totalUnreadMessages}
               </span>
             )}
           </button>
@@ -329,20 +348,29 @@ export default function TeacherDashboard() {
                    filteredStudents.map((std) => (
                      <div 
                        key={std.id}
-                       onClick={() => setSelectedStudent(std)}
-                       className={`p-4 rounded-2xl cursor-pointer transition-all flex items-center gap-3 ${selectedStudent?.id === std.id ? 'bg-blue-600 shadow-lg shadow-blue-600/20' : 'hover:bg-white/5'}`}
+                       onClick={() => handleStudentClick(std)}
+                       className={`p-4 rounded-2xl cursor-pointer transition-all flex items-center justify-between group ${selectedStudent?.id === std.id ? 'bg-blue-600 shadow-lg shadow-blue-600/20' : 'hover:bg-white/5'}`}
                      >
-                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center font-black text-xs overflow-hidden">
-                         {std.profile_pic ? (
-                            <img src={std.profile_pic} alt="pic" className="w-full h-full object-cover" />
-                         ) : (
-                            <span>{std.name?.charAt(0)}</span>
-                         )}
-                       </div>
-                       <div>
-                         <p className={`text-sm font-bold uppercase ${selectedStudent?.id === std.id ? 'text-white' : 'text-gray-300'}`}>{std.name}</p>
-                         <p className="text-[9px] opacity-50 italic uppercase tracking-tighter">ID: {std.id}</p>
-                       </div>
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center font-black text-xs overflow-hidden">
+                            {std.profile_pic ? (
+                                <img src={std.profile_pic} alt="pic" className="w-full h-full object-cover" />
+                            ) : (
+                                <span>{std.name?.charAt(0)}</span>
+                            )}
+                            </div>
+                            <div>
+                            <p className={`text-sm font-bold uppercase ${selectedStudent?.id === std.id ? 'text-white' : 'text-gray-300'}`}>{std.name}</p>
+                            <p className="text-[9px] opacity-50 italic uppercase tracking-tighter">ID: {std.id}</p>
+                            </div>
+                        </div>
+
+                        {/* ✅ Muhammad Ahmed: Student List Badge - Showing unread count for each student */}
+                        {parseInt(std.unread_count) > 0 && selectedStudent?.id !== std.id && (
+                             <div className="bg-red-500 text-white text-[9px] font-black px-2 py-1 rounded-full animate-pulse">
+                                {std.unread_count}
+                             </div>
+                        )}
                      </div>
                    ))
                  ) : (
