@@ -181,7 +181,7 @@ export default function TeacherDashboard() {
     setSelectedStudent(student);
     try {
         // Backend mark-read API call - Ab ye dynamic hai
-        await axios.put(`${API_BASE_URL}/api/teacher/chat/mark-read/${student.id}`, {}, {
+        await axios.put(`${NEXT_PUBLIC_API_URL}/api/teacher/chat/mark-read/${student.id}`, {}, {
             headers: { 'Authorization': `Bearer ${Cookies.get('token')}` }
         });
         
