@@ -34,6 +34,7 @@ import {
 // ✅ MUHAMMAD AHMED: Global URL define kar di hai takay error khatm ho jaye
 const WEBURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 console.log(`🌐 Using API Base URL: ${WEBURL} - Please ensure this is correct!`);
+
 // --- 1. QUESTIONS VIEW MODAL ---
 function QuestionsModal({ quizId, onClose }) {
   const { data: questions = [], isLoading } = useGetQuestionsListQuery(quizId);
@@ -154,8 +155,15 @@ export default function TeacherDashboard() {
   const router = useRouter(); 
   const { data: coursesData, isLoading: coursesLoading } = useGetTeacherCoursesQuery();
   const { data: quizzes = [], isLoading: quizzesLoading } = useGetTeacherQuizzesQuery();
-  const { data: statsData, isLoading: statsLoading, refetch: refetchStats } = useGetTeacherStatsQuery();
-  const { data: allStudentsData = [], refetch: refetchStudents } = useGetAllStudentsQuery(); 
+  
+  // ✅ MUHAMMAD AHMED: Polling add kar di hai taake bina reload naye messages ki animation dikhay
+  const { data: statsData, isLoading: statsLoading, refetch: refetchStats } = useGetTeacherStatsQuery(undefined, {
+    pollingInterval: 4000, // Har 4 second baad stats check karega
+  });
+
+  const { data: allStudentsData = [], refetch: refetchStudents } = useGetAllStudentsQuery(undefined, {
+    pollingInterval: 4000, // Har 4 second baad students ka unread count update karega
+  }); 
 
   const [deleteQuiz] = useDeleteQuizMutation();
   const [deleteCourse] = useDeleteCourseTeacherMutation();
@@ -229,19 +237,16 @@ export default function TeacherDashboard() {
   };
 
   const handleNewMessage = () => {
-    // Refresh student list and stats to show new unread counts
     refetchStudents();
     refetchStats();
   };
 
-  // ✅ Logic to generate unique room ID: Example "31_45"
   const getPrivateRoomId = (studentId) => {
     if (!teacherId || !studentId) return "GLOBAL_ROOM";
     const sortedIds = [String(teacherId), String(studentId)].sort();
     return sortedIds.join("_");
   };
 
-  // Student filtering logic
   const studentList = allStudentsData?.data || allStudentsData;
   const filteredStudents = Array.isArray(studentList) 
     ? studentList.filter(s => s.name?.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -281,7 +286,6 @@ export default function TeacherDashboard() {
             <MessageCircle size={18} />
             <span className="text-[10px] font-black uppercase tracking-widest">{isChatOpen ? 'Close Chat' : 'Student Messages'}</span>
             
-            {/* ✅ Muhammad Ahmed: Main Button Badge - Showing total global unread */}
             {statsData?.totalUnreadMessages > 0 && !isChatOpen && (
               <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-black w-6 h-6 flex items-center justify-center rounded-full border-2 border-[#0f172a] animate-bounce">
                 {statsData.totalUnreadMessages}
@@ -368,7 +372,6 @@ export default function TeacherDashboard() {
                             </div>
                         </div>
 
-                        {/* ✅ Muhammad Ahmed: Student List Badge - Showing unread count for each student */}
                         {parseInt(std.unread_count) > 0 && selectedStudent?.id !== std.id && (
                              <div className="bg-red-500 text-white text-[9px] font-black px-2 py-1 rounded-full animate-pulse">
                                 {std.unread_count}
