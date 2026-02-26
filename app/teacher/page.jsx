@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'; 
 import { useRouter } from 'next/navigation'; 
 import { toast } from 'react-hot-toast';
-import axios from 'axios'; // ✅ Muhammad Ahmed: API call ke liye
+import axios from 'axios'; 
 import { 
   ClipboardList, Users, Eye, X, Award, Calendar, 
   BookOpen, Trash2, List, AlertTriangle, LogOut,
@@ -14,6 +14,7 @@ import Cookies from 'js-cookie';
 import IdentityCard from '@/components/StudentIDCard'; 
 import ResourceCenter from '@/components/ResourceCenter'; 
 import ChatBox from '@/components/ChatBox'; 
+
 
 // ✅ Redux Hooks Import
 import { 
@@ -180,8 +181,7 @@ export default function TeacherDashboard() {
   const handleStudentClick = async (student) => {
     setSelectedStudent(student);
     try {
-        // Backend mark-read API call - Ab ye dynamic hai
-        await axios.put(`${NEXT_PUBLIC_API_URL}/api/teacher/chat/mark-read/${student.id}`, {}, {
+        await axios.put(`https://schoolportalbackend-production-e803.up.railway.app/api/teacher/chat/mark-read/${student.id}`, {}, {
             headers: { 'Authorization': `Bearer ${Cookies.get('token')}` }
         });
         
