@@ -160,7 +160,7 @@ export default function AttendanceReportPage({ params }) {
                       <div className="space-y-2">
                         <p className="text-lg md:text-2xl font-black italic uppercase tracking-tighter text-gray-400">Database Empty</p>
                         <p className="text-[8px] md:text-[10px] font-bold text-gray-600 uppercase tracking-widest max-w-xs mx-auto leading-relaxed">
-                            Ahmad, student has not marked any attendance in Lahore Portal records yet.
+                            subhan, student has not marked any attendance in Lahore Portal records yet.
                         </p>
                       </div>
                     </div>

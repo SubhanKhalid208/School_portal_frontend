@@ -13,7 +13,7 @@ const ChatBox = ({ roomId, userId, userName, userRole, onNewMessage, receiverId,
     const scrollRef = useRef();
     const fileInputRef = useRef();
 
-    // Muhammad Ahmed: API Configuration
+    // API Configuration
     const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
     const serverUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || "http://localhost:5000";
 
@@ -25,7 +25,7 @@ const ChatBox = ({ roomId, userId, userName, userRole, onNewMessage, receiverId,
         return roomId || "GLOBAL_ROOM";
     }, [userId, receiverId, roomId]);
 
-    // Fetch Chat History
+    // Fetch Chat History with Backup Polling
     useEffect(() => {
         const fetchChatHistory = async () => {
             if (!activeRoom || (activeRoom === "GLOBAL_ROOM" && !roomId)) return;
@@ -38,17 +38,27 @@ const ChatBox = ({ roomId, userId, userName, userRole, onNewMessage, receiverId,
                 });
                 if (!response.ok) throw new Error(`Status: ${response.status}`);
                 const result = await response.json();
+                
                 if (result.success && Array.isArray(result.data)) {
-                    setMessages(result.data);
-                } else {
-                    setMessages([]); 
+                    // Update messages only if data has changed to prevent unnecessary re-renders
+                    setMessages((prev) => {
+                        if (JSON.stringify(prev) !== JSON.stringify(result.data)) {
+                            return result.data;
+                        }
+                        return prev;
+                    });
                 }
             } catch (err) {
                 console.error("❌ History error:", err);
-                setMessages([]);
             }
         };
-        fetchChatHistory();
+
+        fetchChatHistory(); // Initial fetch on load
+
+        // Subhan, ye line har 5 second baad background mein sync karegi
+        const intervalId = setInterval(fetchChatHistory, 5000); 
+
+        return () => clearInterval(intervalId); // Cleanup interval
     }, [activeRoom, roomId, apiBase]);
 
     // Socket Connection Logic
@@ -65,9 +75,7 @@ const ChatBox = ({ roomId, userId, userName, userRole, onNewMessage, receiverId,
         });
 
         newSocket.on("receive_message", (data) => {
-            // Check if message belongs to current room
             if (String(data.room) === String(activeRoom)) {
-                // Check if message is not from current user to avoid duplicates
                 if (String(data.senderId) !== String(userId)) {
                     setMessages((prev) => [...prev, data]);
                     if (onNewMessage) onNewMessage();
@@ -134,7 +142,6 @@ const ChatBox = ({ roomId, userId, userName, userRole, onNewMessage, receiverId,
             }
         } catch (err) {
             toast.error("Upload failed!");
-            console.error("Upload Error:", err.response?.data || err.message);
         } finally {
             setUploading(false);
             if (e.target) e.target.value = null; 
@@ -220,7 +227,6 @@ const ChatBox = ({ roomId, userId, userName, userRole, onNewMessage, receiverId,
                 
                 {messages.map((msg, index) => {
                     const isMe = String(msg.senderId) === String(userId); 
-                    
                     return (
                         <div key={index} className={`flex ${isMe ? "justify-end" : "justify-start"} items-end gap-2 animate-fade-in-up`}>
                             {!isMe && (
@@ -228,7 +234,6 @@ const ChatBox = ({ roomId, userId, userName, userRole, onNewMessage, receiverId,
                                     {getInitials(msg.senderName || receiverName)}
                                 </div>
                             )}
-
                             <div className={`flex flex-col ${isMe ? "items-end" : "items-start"} max-w-[80%]`}>
                                 <div className={`relative px-4 py-3 rounded-2xl text-sm leading-relaxed shadow-lg ${
                                     isMe 
@@ -236,7 +241,6 @@ const ChatBox = ({ roomId, userId, userName, userRole, onNewMessage, receiverId,
                                     : "bg-[#1e293b] text-gray-100 rounded-bl-none border border-white/5"
                                 }`}>
                                     {msg.message && <p>{msg.message}</p>}
-
                                     {msg.fileUrl && (
                                         <div className="mt-2">
                                             {msg.fileUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
@@ -279,7 +283,6 @@ const ChatBox = ({ roomId, userId, userName, userRole, onNewMessage, receiverId,
             {/* Input Area */}
             <div className="p-5 bg-white/5 border-t border-white/10 backdrop-blur-2xl">
                 <form onSubmit={handleSendMessage} className="relative flex items-center gap-3">
-                    
                     <button 
                         type="button"
                         onClick={() => fileInputRef.current.click()}

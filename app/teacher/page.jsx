@@ -10,9 +10,9 @@ import {
 } from 'lucide-react';
 import Cookies from 'js-cookie'; 
 
-// ✅ Component Imports
-import IdentityCard from '@/components/StudentIDCard'; 
-import ResourceCenter from '@/components/ResourceCenter'; 
+// ✅ Component Imports            
+import IdentityCard from '@/components/StudentIDCard';  
+import ResourceCenter from '@/components/ResourceCenter';  
 import ChatBox from '@/components/ChatBox'; 
 
 
