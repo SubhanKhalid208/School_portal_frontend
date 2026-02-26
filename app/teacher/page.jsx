@@ -32,8 +32,8 @@ import {
 } from '@/src/lib/redux/apiSlice';
 
 // ✅ MUHAMMAD AHMED: Global URL define kar di hai takay error khatm ho jaye
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-
+const WEBURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+console.log(`🌐 Using API Base URL: ${WEBURL} - Please ensure this is correct!`);
 // --- 1. QUESTIONS VIEW MODAL ---
 function QuestionsModal({ quizId, onClose }) {
   const { data: questions = [], isLoading } = useGetQuestionsListQuery(quizId);
@@ -181,7 +181,7 @@ export default function TeacherDashboard() {
   const handleStudentClick = async (student) => {
     setSelectedStudent(student);
     try {
-        await axios.put(`https://schoolportalbackend-production-e803.up.railway.app/api/teacher/chat/mark-read/${student.id}`, {}, {
+        await axios.put(`${WEBURL}/api/teacher/chat/mark-read/${student.id}`, {}, {
             headers: { 'Authorization': `Bearer ${Cookies.get('token')}` }
         });
         
