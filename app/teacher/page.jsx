@@ -158,11 +158,11 @@ export default function TeacherDashboard() {
   
   // ✅ MUHAMMAD AHMED: Polling add kar di hai taake bina reload naye messages ki animation dikhay
   const { data: statsData, isLoading: statsLoading, refetch: refetchStats } = useGetTeacherStatsQuery(undefined, {
-    pollingInterval: 4000, // Har 4 second baad stats check karega
+    pollingInterval: 2000, // Har 2 second baad stats check karega
   });
 
   const { data: allStudentsData = [], refetch: refetchStudents } = useGetAllStudentsQuery(undefined, {
-    pollingInterval: 4000, // Har 4 second baad students ka unread count update karega
+    pollingInterval: 2000, // Har 2 second baad students ka unread count update karega
   }); 
 
   const [deleteQuiz] = useDeleteQuizMutation();
