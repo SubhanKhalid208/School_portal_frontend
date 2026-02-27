@@ -16,8 +16,8 @@ export const apiSlice = createApi({
     },
     credentials: 'include', 
   }),
-  // ✅ Added 'Analytics' and keeping 'Student' tags
-  tagTypes: ['Quiz', 'Attendance', 'Course', 'MCQ', 'Result', 'User', 'Admin', 'Student', 'Auth', 'Analytics'], 
+  // ✅ Muhammad Ahmed: 'Notes' tag add kiya taake list auto-refresh ho
+  tagTypes: ['Quiz', 'Attendance', 'Course', 'MCQ', 'Result', 'User', 'Admin', 'Student', 'Auth', 'Analytics', 'Notes'], 
   endpoints: (builder) => ({
     
     // --- ATTENDANCE ---
@@ -56,6 +56,27 @@ export const apiSlice = createApi({
     getAuthUsers: builder.query({ 
       query: (params = '') => `/auth/users${params ? `?${params}` : ''}`, 
       providesTags: ['User'] 
+    }),
+
+    // --- TEACHER NOTES (Fixed by Gemini) ---
+    getTeacherNotes: builder.query({
+      query: () => '/teacher/notes',
+      providesTags: ['Notes'],
+    }),
+    addTeacherNote: builder.mutation({
+      query: (note) => ({
+        url: '/teacher/notes',
+        method: 'POST',
+        body: note,
+      }),
+      invalidatesTags: ['Notes'],
+    }),
+    deleteTeacherNote: builder.mutation({
+      query: (id) => ({
+        url: `/teacher/notes/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Notes'],
     }),
 
     // --- ADMIN ---
@@ -106,7 +127,6 @@ export const apiSlice = createApi({
       invalidatesTags: ['Course'] 
     }),
     
-    // ✅ Muhammad Ahmed: New query for Chat Sidebar
     getAllStudents: builder.query({ 
       query: () => '/teacher/all-students', 
       providesTags: ['Student'] 
@@ -165,6 +185,7 @@ export const apiSlice = createApi({
   }),
 });
 
+// ✅ Muhammad Ahmed: Yahan saare hooks ko export kar diya hai
 export const {
   useMarkAttendanceMutation,
   useGetQuizzesQuery,
@@ -201,6 +222,9 @@ export const {
   useGetStudentAttendanceQuery,
   useGetAuthUsersQuery,
   useGetStudentAnalyticsQuery,
-  // ✅ Naye hook ko export kiya
   useGetAllStudentsQuery, 
+  // --- Teacher Notes Hooks ---
+  useGetTeacherNotesQuery,
+  useAddTeacherNoteMutation,
+  useDeleteTeacherNoteMutation,
 } = apiSlice;

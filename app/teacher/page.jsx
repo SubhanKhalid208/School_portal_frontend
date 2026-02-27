@@ -17,7 +17,7 @@ import ResourceCenter from '@/components/ResourceCenter';
 import ChatBox from '@/components/ChatBox'; 
 
 
-// ✅ Redux Hooks Import
+// ✅ Redux Hooks Import (Muhammad Ahmed: Added Notes Hooks)
 import { 
   useGetTeacherCoursesQuery, 
   useGetTeacherQuizzesQuery, 
@@ -29,7 +29,11 @@ import {
   useGetQuestionsListQuery,
   useDeleteQuestionMutation,
   useGetQuizResultsQuery,
-  useGetAllStudentsQuery 
+  useGetAllStudentsQuery,
+  // Scratchpad DB Hooks
+  useGetTeacherNotesQuery,
+  useAddTeacherNoteMutation,
+  useDeleteTeacherNoteMutation
 } from '@/src/lib/redux/apiSlice';
 
 // ✅ MUHAMMAD AHMED: Global URL define kar di hai takay error khatm ho jaye
@@ -170,6 +174,14 @@ export default function TeacherDashboard() {
   const [createCourse] = useCreateCourseTeacherMutation();
   const [updateCourse] = useUpdateCourseTeacherMutation();
 
+  // ✅ MUHAMMAD AHMED: Redux Hooks for Cloud Notes (Database Connected)
+  const { data: savedNotesData, isLoading: notesLoading } = useGetTeacherNotesQuery();
+  const [addNoteDB] = useAddTeacherNoteMutation();
+  const [deleteNoteDB] = useDeleteTeacherNoteMutation();
+
+  // Extract array from possible response structure
+  const savedNotes = savedNotesData?.data || savedNotesData || [];
+
   const [selectedQuizId, setSelectedQuizId] = useState(null); 
   const [viewQuestionsId, setViewQuestionsId] = useState(null); 
   const [showModal, setShowModal] = useState(false);
@@ -181,34 +193,30 @@ export default function TeacherDashboard() {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // ✅ MUHAMMAD AHMED: Scratchpad States
   const [scratchNote, setScratchNote] = useState("");
-  const [savedNotes, setSavedNotes] = useState([]);
 
-  // Load Scratchpad notes from LocalStorage
-  useEffect(() => {
-    const localData = localStorage.getItem('teacher_scratchpad');
-    if (localData) setSavedNotes(JSON.parse(localData));
-  }, []);
-
-  const addScratchNote = (e) => {
+  // ✅ MUHAMMAD AHMED: Added Scratch Note to DB (Ensured it's controlled)
+  const addScratchNote = async (e) => {
     e.preventDefault();
     if (!scratchNote.trim()) return;
-    const newNote = {
-      id: Date.now(),
-      text: scratchNote,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-    const updatedNotes = [newNote, ...savedNotes];
-    setSavedNotes(updatedNotes);
-    localStorage.setItem('teacher_scratchpad', JSON.stringify(updatedNotes));
-    setScratchNote("");
+    
+    try {
+      await addNoteDB({ text: scratchNote }).unwrap();
+      setScratchNote(""); // Clears input after save
+      toast.success("Note saved to cloud!");
+    } catch (err) {
+      toast.error("Cloud storage error");
+    }
   };
 
-  const deleteScratchNote = (id) => {
-    const updatedNotes = savedNotes.filter(n => n.id !== id);
-    setSavedNotes(updatedNotes);
-    localStorage.setItem('teacher_scratchpad', JSON.stringify(updatedNotes));
+  // ✅ MUHAMMAD AHMED: Delete Scratch Note from DB
+  const deleteScratchNote = async (id) => {
+    try {
+      await deleteNoteDB(id).unwrap();
+      toast.success("Note removed");
+    } catch (err) {
+      toast.error("Delete failed");
+    }
   };
 
   const myCourses = coursesData?.data || [];
@@ -345,33 +353,33 @@ export default function TeacherDashboard() {
           <h3 className="font-black text-lg text-blue-400 italic">{statsData?.teacherName || 'Teacher'}</h3>
         </div>
         <div className="bg-[#161d2f] p-6 rounded-2xl border border-gray-800 shadow-xl font-black text-2xl text-purple-400">
-           <p className="text-gray-400 text-[10px] uppercase font-bold tracking-widest">Subjects</p>
-           {statsData?.totalSubjects || 0}
+            <p className="text-gray-400 text-[10px] uppercase font-bold tracking-widest">Subjects</p>
+            {statsData?.totalSubjects || 0}
         </div>
         <div className="bg-[#161d2f] p-6 rounded-2xl border border-gray-800 shadow-xl font-black text-2xl text-green-400">
-           <p className="text-gray-400 text-[10px] uppercase font-bold tracking-widest">Students</p>
-           {statsData?.totalStudents || 0}
+            <p className="text-gray-400 text-[10px] uppercase font-bold tracking-widest">Students</p>
+            {statsData?.totalStudents || 0}
         </div>
         <button onClick={() => { setEditingCourse(null); setFormData({title:'', description:''}); setShowModal(true); }} className="bg-[#161d2f] p-6 rounded-2xl border border-orange-500/30 border-dashed flex items-center justify-center text-orange-400 font-black uppercase text-xs hover:bg-orange-500/10 transition-all shadow-xl">
           + Add New Subject
         </button>
       </div>
 
-      {/* ✅ MUHAMMAD AHMED: PERSONAL SCRATCHPAD SECTION */}
+      {/* ✅ MUHAMMAD AHMED: UPDATED SCRATCHPAD (DB CONNECTED) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-1 bg-[#161d2f] border border-white/5 rounded-[2.5rem] p-6 shadow-2xl overflow-hidden flex flex-col h-[400px]">
               <div className="flex items-center gap-3 mb-6">
                   <div className="p-2 bg-yellow-500/20 rounded-xl border border-yellow-500/20">
                     <StickyNote className="text-yellow-500" size={20} />
                   </div>
-                  <h3 className="text-sm font-black italic text-white uppercase tracking-widest">Personal Scratchpad</h3>
+                  <h3 className="text-sm font-black italic text-white uppercase tracking-widest">Cloud Scratchpad</h3>
               </div>
               
               <form onSubmit={addScratchNote} className="mb-4">
                   <div className="relative">
                       <input 
                           type="text" 
-                          placeholder="Note down a task..." 
+                          placeholder="Save note to cloud..." 
                           className="w-full bg-black/40 border border-white/10 rounded-xl py-3 pl-4 pr-10 text-xs text-white outline-none focus:border-yellow-500/50"
                           value={scratchNote}
                           onChange={(e) => setScratchNote(e.target.value)}
@@ -383,17 +391,21 @@ export default function TeacherDashboard() {
               </form>
 
               <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-1">
-                  {savedNotes.length === 0 ? (
+                  {notesLoading ? (
+                      <div className="text-center animate-pulse py-10 text-[10px] uppercase font-black text-gray-500 tracking-widest">Syncing Cloud...</div>
+                  ) : savedNotes.length === 0 ? (
                       <div className="h-full flex flex-col items-center justify-center opacity-20 italic">
                           <StickyNote size={40} className="mb-2" />
-                          <p className="text-[10px] font-black uppercase">No Private Notes</p>
+                          <p className="text-[10px] font-black uppercase">No Cloud Notes</p>
                       </div>
                   ) : (
                       savedNotes.map((note) => (
                           <div key={note.id} className="group bg-white/5 border border-white/5 p-4 rounded-2xl hover:border-yellow-500/30 transition-all relative">
                               <p className="text-xs text-gray-200 leading-relaxed mb-2">{note.text}</p>
                               <div className="flex justify-between items-center">
-                                  <span className="text-[8px] text-gray-500 font-black uppercase">{note.time}</span>
+                                  <span className="text-[8px] text-gray-500 font-black uppercase">
+                                      {new Date(note.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
                                   <button onClick={() => deleteScratchNote(note.id)} className="opacity-0 group-hover:opacity-100 text-red-500 hover:scale-110 transition-all">
                                       <Trash2 size={14} />
                                   </button>
@@ -402,7 +414,7 @@ export default function TeacherDashboard() {
                       ))
                   )}
               </div>
-              <p className="text-center text-[8px] text-gray-600 mt-4 uppercase font-bold tracking-tighter">Your notes are stored locally & private</p>
+              <p className="text-center text-[8px] text-blue-500 mt-4 uppercase font-bold tracking-tighter italic">● Lahore Portal Cloud Sync Enabled</p>
           </div>
 
           <div className="md:col-span-2 bg-[#161d2f] border border-blue-500/10 border-dashed rounded-[2.5rem] p-8 flex flex-col items-center justify-center text-center">
@@ -459,7 +471,7 @@ export default function TeacherDashboard() {
 
                          {parseInt(std.unread_count) > 0 && selectedStudent?.id !== std.id && (
                               <div className="bg-red-500 text-white text-[9px] font-black px-2 py-1 rounded-full animate-bounce">
-                                 {std.unread_count}
+                                  {std.unread_count}
                               </div>
                          )}
                       </div>
