@@ -6,7 +6,8 @@ import axios from 'axios';
 import { 
   ClipboardList, Users, Eye, X, Award, Calendar, 
   BookOpen, Trash2, List, AlertTriangle, LogOut,
-  UserRound, Library, BarChart3, MessageCircle, Search 
+  UserRound, Library, BarChart3, MessageCircle, Search,
+  StickyNote, Plus, Trash
 } from 'lucide-react';
 import Cookies from 'js-cookie'; 
 
@@ -78,8 +79,8 @@ function QuestionsModal({ quizId, onClose }) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {JSON.parse(q.options).map((opt, i) => (
                     <div key={i} className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 ${opt === q.correct_answer ? 'bg-green-500/20 border border-green-500/40 text-green-400' : 'bg-white/5 text-gray-500 border border-transparent'}`}>
-                       <div className={`w-2 h-2 rounded-full ${opt === q.correct_answer ? 'bg-green-500' : 'bg-gray-700'}`} />
-                       {opt}
+                        <div className={`w-2 h-2 rounded-full ${opt === q.correct_answer ? 'bg-green-500' : 'bg-gray-700'}`} />
+                        {opt}
                     </div>
                   ))}
                 </div>
@@ -156,13 +157,12 @@ export default function TeacherDashboard() {
   const { data: coursesData, isLoading: coursesLoading } = useGetTeacherCoursesQuery();
   const { data: quizzes = [], isLoading: quizzesLoading } = useGetTeacherQuizzesQuery();
   
-  // ✅ MUHAMMAD AHMED: Polling add kar di hai taake bina reload naye messages ki animation dikhay
   const { data: statsData, isLoading: statsLoading, refetch: refetchStats } = useGetTeacherStatsQuery(undefined, {
-    pollingInterval: 4000, // Har 4 second baad stats check karega
+    pollingInterval: 4000, 
   });
 
   const { data: allStudentsData = [], refetch: refetchStudents } = useGetAllStudentsQuery(undefined, {
-    pollingInterval: 4000, // Har 4 second baad students ka unread count update karega
+    pollingInterval: 4000, 
   }); 
 
   const [deleteQuiz] = useDeleteQuizMutation();
@@ -178,14 +178,42 @@ export default function TeacherDashboard() {
   const [editingCourse, setEditingCourse] = useState(null);
   const [formData, setFormData] = useState({ title: '', description: '' });
 
-  // ✅ MUHAMMAD AHMED: States for Private Chat
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // ✅ MUHAMMAD AHMED: Scratchpad States
+  const [scratchNote, setScratchNote] = useState("");
+  const [savedNotes, setSavedNotes] = useState([]);
+
+  // Load Scratchpad notes from LocalStorage
+  useEffect(() => {
+    const localData = localStorage.getItem('teacher_scratchpad');
+    if (localData) setSavedNotes(JSON.parse(localData));
+  }, []);
+
+  const addScratchNote = (e) => {
+    e.preventDefault();
+    if (!scratchNote.trim()) return;
+    const newNote = {
+      id: Date.now(),
+      text: scratchNote,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+    const updatedNotes = [newNote, ...savedNotes];
+    setSavedNotes(updatedNotes);
+    localStorage.setItem('teacher_scratchpad', JSON.stringify(updatedNotes));
+    setScratchNote("");
+  };
+
+  const deleteScratchNote = (id) => {
+    const updatedNotes = savedNotes.filter(n => n.id !== id);
+    setSavedNotes(updatedNotes);
+    localStorage.setItem('teacher_scratchpad', JSON.stringify(updatedNotes));
+  };
 
   const myCourses = coursesData?.data || [];
   const teacherId = Cookies.get('userId'); 
 
-  // ✅ MUHAMMAD AHMED: Mark as Read Logic
   const handleStudentClick = async (student) => {
     setSelectedStudent(student);
     try {
@@ -198,7 +226,7 @@ export default function TeacherDashboard() {
     } catch (err) {
         console.error("Mark read error:", err);
     }
-};
+  };
 
   const handleLogout = () => {
     Cookies.remove('userId');
@@ -329,82 +357,139 @@ export default function TeacherDashboard() {
         </button>
       </div>
 
+      {/* ✅ MUHAMMAD AHMED: PERSONAL SCRATCHPAD SECTION */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="md:col-span-1 bg-[#161d2f] border border-white/5 rounded-[2.5rem] p-6 shadow-2xl overflow-hidden flex flex-col h-[400px]">
+              <div className="flex items-center gap-3 mb-6">
+                  <div className="p-2 bg-yellow-500/20 rounded-xl border border-yellow-500/20">
+                    <StickyNote className="text-yellow-500" size={20} />
+                  </div>
+                  <h3 className="text-sm font-black italic text-white uppercase tracking-widest">Personal Scratchpad</h3>
+              </div>
+              
+              <form onSubmit={addScratchNote} className="mb-4">
+                  <div className="relative">
+                      <input 
+                          type="text" 
+                          placeholder="Note down a task..." 
+                          className="w-full bg-black/40 border border-white/10 rounded-xl py-3 pl-4 pr-10 text-xs text-white outline-none focus:border-yellow-500/50"
+                          value={scratchNote}
+                          onChange={(e) => setScratchNote(e.target.value)}
+                      />
+                      <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-yellow-500 text-black rounded-lg hover:scale-105 transition-all">
+                          <Plus size={16} strokeWidth={4} />
+                      </button>
+                  </div>
+              </form>
+
+              <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-1">
+                  {savedNotes.length === 0 ? (
+                      <div className="h-full flex flex-col items-center justify-center opacity-20 italic">
+                          <StickyNote size={40} className="mb-2" />
+                          <p className="text-[10px] font-black uppercase">No Private Notes</p>
+                      </div>
+                  ) : (
+                      savedNotes.map((note) => (
+                          <div key={note.id} className="group bg-white/5 border border-white/5 p-4 rounded-2xl hover:border-yellow-500/30 transition-all relative">
+                              <p className="text-xs text-gray-200 leading-relaxed mb-2">{note.text}</p>
+                              <div className="flex justify-between items-center">
+                                  <span className="text-[8px] text-gray-500 font-black uppercase">{note.time}</span>
+                                  <button onClick={() => deleteScratchNote(note.id)} className="opacity-0 group-hover:opacity-100 text-red-500 hover:scale-110 transition-all">
+                                      <Trash2 size={14} />
+                                  </button>
+                              </div>
+                          </div>
+                      ))
+                  )}
+              </div>
+              <p className="text-center text-[8px] text-gray-600 mt-4 uppercase font-bold tracking-tighter">Your notes are stored locally & private</p>
+          </div>
+
+          <div className="md:col-span-2 bg-[#161d2f] border border-blue-500/10 border-dashed rounded-[2.5rem] p-8 flex flex-col items-center justify-center text-center">
+              <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mb-4">
+                  <Calendar className="text-blue-500" size={32} />
+              </div>
+              <h3 className="text-lg font-black uppercase italic text-white mb-2">Today's Schedule</h3>
+              <p className="text-xs text-gray-500 max-w-xs uppercase font-bold tracking-widest">Manage your daily lectures and student meetings here.</p>
+          </div>
+      </div>
+
       {/* ✅ UPGRADED CHAT SYSTEM */}
       {isChatOpen && (
         <div className="animate-in slide-in-from-top-4 duration-500">
-           <div className="flex flex-col md:flex-row h-[600px] bg-[#161d2f] rounded-[2.5rem] border border-white/5 overflow-hidden shadow-2xl">
-             
-             {/* --- SIDEBAR: Students List --- */}
-             <div className="w-full md:w-1/3 border-r border-white/5 flex flex-col bg-black/20">
-               <div className="p-6 border-b border-white/5">
-                 <h3 className="text-sm font-black italic text-blue-400 uppercase tracking-widest mb-4">Registered Students</h3>
-                 <div className="relative">
-                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
-                   <input 
-                     type="text" 
-                     placeholder="Search student..." 
-                     className="w-full bg-white/5 border border-white/10 rounded-xl py-2 pl-10 pr-4 text-xs outline-none focus:border-blue-500/50"
-                     value={searchQuery}
-                     onChange={(e) => setSearchQuery(e.target.value)}
-                   />
-                 </div>
-               </div>
-               
-               <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
-                 {filteredStudents.length > 0 ? (
-                   filteredStudents.map((std) => (
-                     <div 
-                       key={std.id}
-                       onClick={() => handleStudentClick(std)}
-                       className={`p-4 rounded-2xl cursor-pointer transition-all flex items-center justify-between group ${selectedStudent?.id === std.id ? 'bg-blue-600 shadow-lg shadow-blue-600/20' : 'hover:bg-white/5'}`}
-                     >
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center font-black text-xs overflow-hidden">
-                            {std.profile_pic ? (
-                                <img src={std.profile_pic} alt="pic" className="w-full h-full object-cover" />
-                            ) : (
-                                <span>{std.name?.charAt(0)}</span>
-                            )}
-                            </div>
-                            <div>
-                            <p className={`text-sm font-bold uppercase ${selectedStudent?.id === std.id ? 'text-white' : 'text-gray-300'}`}>{std.name}</p>
-                            <p className="text-[9px] opacity-50 italic uppercase tracking-tighter">ID: {std.id}</p>
-                            </div>
-                        </div>
-
-                        {parseInt(std.unread_count) > 0 && selectedStudent?.id !== std.id && (
-                             <div className="bg-red-500 text-white text-[9px] font-black px-2 py-1 rounded-full animate-pulse">
-                                {std.unread_count}
+            <div className="flex flex-col md:flex-row h-[600px] bg-[#161d2f] rounded-[2.5rem] border border-white/5 overflow-hidden shadow-2xl">
+              
+              {/* --- SIDEBAR: Students List --- */}
+              <div className="w-full md:w-1/3 border-r border-white/5 flex flex-col bg-black/20">
+                <div className="p-6 border-b border-white/5">
+                  <h3 className="text-sm font-black italic text-blue-400 uppercase tracking-widest mb-4">Registered Students</h3>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
+                    <input 
+                      type="text" 
+                      placeholder="Search student..." 
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-2 pl-10 pr-4 text-xs outline-none focus:border-blue-500/50"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                  {filteredStudents.length > 0 ? (
+                    filteredStudents.map((std) => (
+                      <div 
+                        key={std.id}
+                        onClick={() => handleStudentClick(std)}
+                        className={`p-4 rounded-2xl cursor-pointer transition-all flex items-center justify-between group ${selectedStudent?.id === std.id ? 'bg-blue-600 shadow-lg shadow-blue-600/20' : 'hover:bg-white/5'}`}
+                      >
+                         <div className="flex items-center gap-3">
+                             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center font-black text-xs overflow-hidden">
+                             {std.profile_pic ? (
+                                 <img src={std.profile_pic} alt="pic" className="w-full h-full object-cover" />
+                             ) : (
+                                 <span>{std.name?.charAt(0)}</span>
+                             )}
                              </div>
-                        )}
-                     </div>
-                   ))
-                 ) : (
-                   <p className="text-center text-[10px] text-gray-600 mt-10 uppercase font-black">No students found</p>
-                 )}
-               </div>
-             </div>
+                             <div>
+                             <p className={`text-sm font-bold uppercase ${selectedStudent?.id === std.id ? 'text-white' : 'text-gray-300'}`}>{std.name}</p>
+                             <p className="text-[9px] opacity-50 italic uppercase tracking-tighter">ID: {std.id}</p>
+                             </div>
+                         </div>
 
-             {/* --- MAIN: Private Chat Box --- */}
-             <div className="flex-1 flex flex-col relative bg-black/10">
-               {selectedStudent ? (
-                 <ChatBox 
-                   roomId={getPrivateRoomId(selectedStudent.id)}
-                   userId={teacherId}
-                   userName={statsData?.teacherName || "Teacher"}
-                   userRole="teacher"
-                   receiverId={selectedStudent.id}
-                   receiverName={selectedStudent.name}
-                   onNewMessage={handleNewMessage}
-                 />
-               ) : (
-                 <div className="m-auto text-center opacity-20">
-                   <MessageCircle size={60} className="mx-auto mb-4" />
-                   <p className="text-xs font-black uppercase tracking-[0.3em]">Select a student to start a private conversation</p>
-                 </div>
-               )}
-             </div>
-           </div>
+                         {parseInt(std.unread_count) > 0 && selectedStudent?.id !== std.id && (
+                              <div className="bg-red-500 text-white text-[9px] font-black px-2 py-1 rounded-full animate-bounce">
+                                 {std.unread_count}
+                              </div>
+                         )}
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-center text-[10px] text-gray-600 mt-10 uppercase font-black">No students found</p>
+                  )}
+                </div>
+              </div>
+
+              {/* --- MAIN: Private Chat Box --- */}
+              <div className="flex-1 flex flex-col relative bg-black/10">
+                {selectedStudent ? (
+                  <ChatBox 
+                    roomId={getPrivateRoomId(selectedStudent.id)}
+                    userId={teacherId}
+                    userName={statsData?.teacherName || "Teacher"}
+                    userRole="teacher"
+                    receiverId={selectedStudent.id}
+                    receiverName={selectedStudent.name}
+                    onNewMessage={handleNewMessage}
+                  />
+                ) : (
+                  <div className="m-auto text-center opacity-20">
+                    <MessageCircle size={60} className="mx-auto mb-4" />
+                    <p className="text-xs font-black uppercase tracking-[0.3em]">Select a student to start a private conversation</p>
+                  </div>
+                )}
+              </div>
+            </div>
         </div>
       )}
 
